@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+/* Custom global styles */
+@layer base {
+  body {
+    background-color: var(--color-gray-50);
+  }
+}
+
+@layer components {
+  .btn-primary {
+    background-color: var(--color-blue-600);
+    color: #fff;
+    padding: var(--spacing-2) var(--spacing-4);
+    border-radius: var(--radius-lg);
+    transition: background-color 0.15s ease;
+  }
+  .btn-primary:hover {
+    background-color: var(--color-blue-700);
+  }
+
+  .btn-secondary {
+    background-color: var(--color-gray-600);
+    color: #fff;
+    padding: var(--spacing-2) var(--spacing-4);
+    border-radius: var(--radius-lg);
+    transition: background-color 0.15s ease;
+  }
+  .btn-secondary:hover {
+    background-color: var(--color-gray-700);
+  }
+
+  .card {
+    background-color: #fff;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    padding: var(--spacing-6);
+  }
+}
+
+
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.animate-slide-in {
+    animation: slideIn 0.3s ease-out;
+}
+
+/* Sidebar Fixes */
+.sidebar-nav-item {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Ensure text doesn't wrap in sidebar */
+aside nav button span:last-child {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Better scrollbar for sidebar */
+aside nav::-webkit-scrollbar {
+  width: 4px;
+}
+
+aside nav::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+aside nav::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 4px;
+}
+
+aside nav::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
