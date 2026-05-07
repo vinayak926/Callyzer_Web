@@ -1,3 +1,16 @@
+// ============================================
+// REGISTER PAGE — Premium Redesign (Light + Dark)
+// ============================================
+// CHANGES (UI only):
+//   • bg-page / dark:bg-page-dark background with ambient glow
+//   • Glassmorphic card (dark mode)
+//   • Gradient CTA button with hover lift
+//   • Refined inputs with icon + focus glow
+//   • Info box using accent color tones
+//   • dark: variant on EVERY element
+// UNCHANGED: All state, logic, API calls, validation, navigation
+// ============================================
+
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
@@ -57,61 +70,76 @@ export default function Register() {
     ];
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
-            <div className="w-full max-w-md">
-                {/* Brand */}
+        <div className="min-h-screen bg-page dark:bg-page-dark flex items-center justify-center p-4 relative overflow-hidden transition-colors duration-300">
+
+            {/* ── Ambient glow orbs ── */}
+            <div className="absolute top-1/4 right-1/3 w-[400px] h-[400px] bg-primary/8 dark:bg-primary/12 rounded-full blur-[100px] pointer-events-none" />
+            <div className="absolute bottom-1/3 left-1/4 w-[320px] h-[320px] bg-accent/6 dark:bg-accent/10 rounded-full blur-[100px] pointer-events-none" />
+
+            <div className="w-full max-w-md relative z-10 animate-fade-in">
+
+                {/* ── Brand ── */}
                 <div className="text-center mb-6">
-                    <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-3 shadow-lg shadow-indigo-200">📞</div>
-                    <h1 className="text-2xl font-extrabold text-gray-900">Callyzer</h1>
-                    <p className="text-gray-500 text-sm mt-0.5">Register as Team Lead</p>
+                    <div className="w-14 h-14 bg-gradient-to-br from-primary to-accent rounded-2xl flex items-center justify-center text-2xl mx-auto mb-3 shadow-glow">
+                        📞
+                    </div>
+                    <h1 className="text-2xl font-extrabold text-heading dark:text-heading-dark tracking-tight">Callyzer</h1>
+                    <p className="text-subtle dark:text-subtle-dark text-sm mt-0.5 tracking-wide">Register as Team Lead</p>
                 </div>
 
-                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-7">
-                    <h2 className="text-lg font-bold text-gray-900 mb-1">Create Account</h2>
-                    <p className="text-gray-500 text-sm mb-5">Your account will be reviewed by admin before activation.</p>
+                {/* ── Card ── */}
+                <div className="bg-card dark:bg-card-dark/80 dark:backdrop-blur-xl rounded-2xl shadow-elevated dark:shadow-glow border border-line dark:border-white/5 p-7 transition-all duration-300">
+                    <h2 className="text-lg font-bold text-heading dark:text-heading-dark tracking-tight mb-1">Create Account</h2>
+                    <p className="text-subtle dark:text-subtle-dark text-sm mb-5">Your account will be reviewed by admin before activation.</p>
 
+                    {/* Error */}
                     {error && (
-                        <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm mb-4 flex items-center gap-2">
-                            <span>⚠️</span> {error}
+                        <div className="bg-danger-soft dark:bg-danger/10 border border-danger/20 text-danger rounded-xl px-4 py-3 text-sm mb-4 flex items-start gap-2.5 animate-fade-in">
+                            <span className="mt-0.5 shrink-0">⚠️</span>
+                            <span>{error}</span>
                         </div>
                     )}
 
                     <form onSubmit={handleSubmit} className="space-y-4">
+
+                        {/* ── Dynamic text fields ── */}
                         {fields.map(f => (
                             <div key={f.key}>
-                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">{f.label}</label>
+                                <label className="block text-xs font-semibold text-subtle dark:text-subtle-dark uppercase tracking-widest mb-2">
+                                    {f.label}
+                                </label>
                                 <div className="relative">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base">{f.icon}</span>
+                                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base opacity-60">{f.icon}</span>
                                     <input
                                         type={f.type}
                                         value={form[f.key]}
                                         onChange={e => set(f.key, e.target.value)}
                                         placeholder={f.placeholder}
                                         maxLength={f.key === 'phone' ? 10 : undefined}
-                                        className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
+                                        className="w-full pl-11 pr-4 py-3 border-2 border-line dark:border-line-dark rounded-xl bg-input dark:bg-input-dark text-sm text-heading dark:text-heading-dark placeholder-subtle dark:placeholder-subtle-dark focus:outline-none focus:border-primary dark:focus:border-primary-light focus:shadow-glow hover:border-line-strong dark:hover:border-line-dark-strong transition-all duration-200"
                                     />
                                 </div>
                             </div>
                         ))}
 
-                        {/* Password */}
+                        {/* ── Password fields ── */}
                         {['password', 'confirmPassword'].map((key, i) => (
                             <div key={key}>
-                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                                <label className="block text-xs font-semibold text-subtle dark:text-subtle-dark uppercase tracking-widest mb-2">
                                     {i === 0 ? 'Password' : 'Confirm Password'}
                                 </label>
                                 <div className="relative">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base">🔒</span>
+                                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base opacity-60">🔒</span>
                                     <input
                                         type={pwdVisible ? 'text' : 'password'}
                                         value={form[key]}
                                         onChange={e => set(key, e.target.value)}
                                         placeholder={i === 0 ? 'Min. 6 characters' : 'Re-enter password'}
-                                        className="w-full pl-10 pr-12 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
+                                        className="w-full pl-11 pr-12 py-3 border-2 border-line dark:border-line-dark rounded-xl bg-input dark:bg-input-dark text-sm text-heading dark:text-heading-dark placeholder-subtle dark:placeholder-subtle-dark focus:outline-none focus:border-primary dark:focus:border-primary-light focus:shadow-glow hover:border-line-strong dark:hover:border-line-dark-strong transition-all duration-200"
                                     />
                                     {i === 0 && (
                                         <button type="button" onClick={() => setPwdVisible(v => !v)}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-subtle dark:text-subtle-dark hover:text-heading dark:hover:text-heading-dark transition-colors duration-200 cursor-pointer">
                                             {pwdVisible ? '🙈' : '👁️'}
                                         </button>
                                     )}
@@ -119,23 +147,25 @@ export default function Register() {
                             </div>
                         ))}
 
-                        {/* Info Box */}
-                        <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3 flex gap-2 text-sm text-indigo-700">
-                            <span className="shrink-0">ℹ️</span>
+                        {/* ── Info Box ── */}
+                        <div className="bg-accent-soft dark:bg-accent/10 border border-accent/15 dark:border-accent/20 rounded-xl p-3.5 flex gap-2.5 text-sm text-accent-hover dark:text-accent-light">
+                            <span className="shrink-0 mt-0.5">ℹ️</span>
                             <p>After registration, Super Admin will review and approve your account before you can login.</p>
                         </div>
 
+                        {/* ── Submit ── */}
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-all shadow-md shadow-indigo-200 flex items-center justify-center gap-2 text-sm"
+                            className="w-full bg-gradient-to-r from-primary to-primary-hover dark:from-primary dark:to-accent hover:from-primary-light hover:to-primary disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition-all duration-300 shadow-elevated hover:shadow-float hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2 text-sm cursor-pointer"
                         >
                             {loading ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Creating...</> : 'Create Account'}
                         </button>
 
-                        <p className="text-center text-sm text-gray-500">
+                        {/* ── Login link ── */}
+                        <p className="text-center text-sm text-subtle dark:text-subtle-dark">
                             Already have an account?{' '}
-                            <Link to="/login" className="text-indigo-600 font-bold hover:underline">Sign In</Link>
+                            <Link to="/login" className="text-primary dark:text-primary-light font-bold hover:text-primary-hover dark:hover:text-primary-200 hover:underline underline-offset-4 transition-colors duration-200">Sign In</Link>
                         </p>
                     </form>
                 </div>

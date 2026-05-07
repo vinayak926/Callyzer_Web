@@ -1,35 +1,70 @@
+// ============================================
+// BUSINESS DASHBOARD — Premium Redesign (Light + Dark)
+// ============================================
+// CHANGES (UI only):
+//   • StatCard: Tailwind-only colors, no inline styles
+//   • AgentRow: Tailwind avatar colors, no inline styles
+//   • Connection Rate: themed progress bar
+//   • Quick Actions: Tailwind bg/text, hover lift, no inline styles
+//   • All cards: bg-card/dark:bg-card-dark glassmorphic
+//   • Empty states: icon + heading + subtext
+//   • dark: variant on EVERY element
+// UNCHANGED: All state, API calls, logic, data processing
+// ============================================
+
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import { api } from '../../services/api';
 
-const StatCard = ({ label, value, icon, color, soft, sub }) => (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100" style={{ borderTopColor: color, borderTopWidth: 3 }}>
-        <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl mb-3" style={{ backgroundColor: soft }}>{icon}</div>
-        <p className="text-3xl font-extrabold text-gray-900">{value ?? '0'}</p>
-        <p className="text-sm text-gray-500 mt-1">{label}</p>
-        {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
+const STAT_THEMES = {
+    total:    { border: 'border-t-info',     bg: 'bg-info-soft dark:bg-info/10' },
+    connect:  { border: 'border-t-success',  bg: 'bg-success-soft dark:bg-success/10' },
+    missed:   { border: 'border-t-danger',   bg: 'bg-danger-soft dark:bg-danger/10' },
+    duration: { border: 'border-t-primary',  bg: 'bg-primary-soft dark:bg-primary/10' },
+};
+
+const StatCard = ({ label, value, icon, theme, sub }) => (
+    <div className={`bg-card dark:bg-card-dark/80 dark:backdrop-blur-xl rounded-2xl p-5 shadow-card dark:shadow-none border border-line dark:border-white/5 border-t-[3px] ${theme.border} hover:shadow-elevated hover:scale-[1.02] transition-all duration-300`}>
+        <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl mb-3 ${theme.bg}`}>{icon}</div>
+        <p className="text-3xl font-extrabold text-heading dark:text-heading-dark">{value ?? '0'}</p>
+        <p className="text-sm text-body dark:text-body-dark mt-1">{label}</p>
+        {sub && <p className="text-xs text-subtle dark:text-subtle-dark mt-0.5">{sub}</p>}
     </div>
 );
 
-const AgentRow = ({ agent, index }) => {
-    const colors = ['#4A68F0', '#7322C0', '#16BE62', '#F0204E', '#F0991A', '#0AAECC'];
-    return (
-        <div className={`flex items-center gap-3 px-4 py-3 ${index > 0 ? 'border-t border-gray-100' : ''}`}>
-            <div className="w-8 text-center">
-                <span className="text-xs font-bold text-gray-400">#{index + 1}</span>
-            </div>
-            <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm" style={{ backgroundColor: colors[index % colors.length] }}>
-                {(agent.name || '?').charAt(0).toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-                <p className="font-semibold text-gray-800 text-sm truncate">{agent.name}</p>
-                <p className="text-xs text-gray-400">{agent.connectedCalls} connected · {agent.totalCalls} total</p>
-            </div>
-            <p className="text-lg font-extrabold text-indigo-600">{agent.totalCalls}</p>
+const AVATAR_COLORS = [
+    'bg-primary',
+    'bg-role-admin',
+    'bg-success',
+    'bg-danger',
+    'bg-warning',
+    'bg-accent',
+];
+
+const AgentRow = ({ agent, index }) => (
+    <div className={`flex items-center gap-3 px-4 py-3.5 ${index > 0 ? 'border-t border-line dark:border-line-dark' : ''} hover:bg-hover-bg dark:hover:bg-hover-bg-dark transition-colors duration-150`}>
+        <div className="w-8 text-center">
+            <span className="text-xs font-bold text-subtle dark:text-subtle-dark">#{index + 1}</span>
         </div>
-    );
-};
+        <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm ${AVATAR_COLORS[index % AVATAR_COLORS.length]} shadow-card`}>
+            {(agent.name || '?').charAt(0).toUpperCase()}
+        </div>
+        <div className="flex-1 min-w-0">
+            <p className="font-semibold text-heading dark:text-heading-dark text-sm truncate">{agent.name}</p>
+            <p className="text-xs text-subtle dark:text-subtle-dark">{agent.connectedCalls} connected · {agent.totalCalls} total</p>
+        </div>
+        <p className="text-lg font-extrabold text-primary dark:text-primary-light">{agent.totalCalls}</p>
+    </div>
+);
+
+const QUICK_ACTIONS = [
+    { icon: '📞', label: 'Call Logs',    tw: 'bg-info-soft dark:bg-info/10 text-info',            path: '/business/call-logs' },
+    { icon: '🔴', label: 'Live Feed',    tw: 'bg-danger-soft dark:bg-danger/10 text-danger',      path: '/business/live-feed' },
+    { icon: '📊', label: 'Reports',      tw: 'bg-primary-soft dark:bg-primary/10 text-primary dark:text-primary-light', path: '/business/reports' },
+    { icon: '📲', label: 'Sync Calls',   tw: 'bg-success-soft dark:bg-success/10 text-success',   path: '/business/sync' },
+    { icon: '🏆', label: 'Leaderboard',  tw: 'bg-warning-soft dark:bg-warning/10 text-warning',   path: '/business/leaderboard' },
+];
 
 export default function BusinessDashboard() {
     const { user } = useContext(AuthContext);
@@ -53,7 +88,7 @@ export default function BusinessDashboard() {
 
     if (loading) return (
         <div className="flex items-center justify-center h-96">
-            <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
         </div>
     );
 
@@ -64,64 +99,70 @@ export default function BusinessDashboard() {
     const avgDuration = teamStats?.avgDuration ? `${teamStats.avgDuration}s` : '0s';
     const connectRate = totalCalls > 0 ? Math.round((connected / totalCalls) * 100) : 0;
 
-    const quickActions = [
-        { icon: '📞', label: 'Call Logs', color: '#006FEE', soft: '#E6F1FE', path: '/business/call-logs' },
-        { icon: '🔴', label: 'Live Feed', color: '#F31260', soft: '#FEE7EF', path: '/business/live-feed' },
-        { icon: '📊', label: 'Reports', color: '#7828C8', soft: '#F0E6FF', path: '/business/reports' },
-        { icon: '📲', label: 'Sync Calls', color: '#17C964', soft: '#E8FBF0', path: '/business/sync' },
-        { icon: '🏆', label: 'Leaderboard', color: '#F5A524', soft: '#FFF4E0', path: '/business/leaderboard' },
-    ];
+    const quickActions = QUICK_ACTIONS;
 
     return (
-        <div className="p-6 max-w-5xl mx-auto space-y-5">
-            {/* Header */}
+        <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-5 animate-fade-in">
+
+            {/* ── Header ── */}
             <div>
-                <p className="text-sm text-gray-500">Hello, {user?.name?.split(' ')[0] || 'Team Lead'} 👋</p>
-                <h2 className="text-2xl font-extrabold text-gray-900 mt-0.5">{today}</h2>
+                <p className="text-sm text-subtle dark:text-subtle-dark">Hello, {user?.name?.split(' ')[0] || 'Team Lead'} 👋</p>
+                <h2 className="text-2xl font-extrabold text-heading dark:text-heading-dark mt-0.5 tracking-tight">{today}</h2>
             </div>
 
-            {/* Team Stats */}
+            {/* ── Team Stats ── */}
             <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Today's Team Overview</p>
+                <p className="text-xs font-semibold text-subtle dark:text-subtle-dark uppercase tracking-widest mb-3">Today's Team Overview</p>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <StatCard label="Total Calls" value={totalCalls} icon="📞" color="#006FEE" soft="#E6F1FE" sub="All calls today" />
-                    <StatCard label="Connected" value={connected} icon="✅" color="#17C964" soft="#E8FBF0" sub="Picked up" />
-                    <StatCard label="Missed" value={missed} icon="📵" color="#F31260" soft="#FEE7EF" sub="Not answered" />
-                    <StatCard label="Avg Duration" value={avgDuration} icon="⏱️" color="#7828C8" soft="#F0E6FF" sub="Per call" />
+                    <StatCard label="Total Calls" value={totalCalls} icon="📞" theme={STAT_THEMES.total} sub="All calls today" />
+                    <StatCard label="Connected" value={connected} icon="✅" theme={STAT_THEMES.connect} sub="Picked up" />
+                    <StatCard label="Missed" value={missed} icon="📵" theme={STAT_THEMES.missed} sub="Not answered" />
+                    <StatCard label="Avg Duration" value={avgDuration} icon="⏱️" theme={STAT_THEMES.duration} sub="Per call" />
                 </div>
             </div>
 
-            {/* Connection Rate */}
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-                <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm text-gray-600">Team Connection Rate</p>
-                    <p className="text-lg font-extrabold text-green-600">{connectRate}%</p>
+            {/* ── Connection Rate ── */}
+            <div className="bg-card dark:bg-card-dark/80 dark:backdrop-blur-xl rounded-2xl p-5 shadow-card dark:shadow-none border border-line dark:border-white/5 transition-colors duration-300">
+                <div className="flex items-center justify-between mb-3">
+                    <p className="text-sm text-body dark:text-body-dark font-medium">Team Connection Rate</p>
+                    <p className="text-lg font-extrabold text-success">{connectRate}%</p>
                 </div>
-                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-2 rounded-full bg-green-500" style={{ width: `${connectRate}%` }} />
+                <div className="h-2.5 bg-raised dark:bg-raised-dark rounded-full overflow-hidden">
+                    <div
+                        className="h-2.5 rounded-full bg-gradient-to-r from-success to-accent transition-all duration-700 ease-out"
+                        style={{ width: `${connectRate}%` }}
+                    />
                 </div>
             </div>
 
-            {/* Agent Performance */}
+            {/* ── Agent Performance ── */}
             <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Agent Performance</p>
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <p className="text-xs font-semibold text-subtle dark:text-subtle-dark uppercase tracking-widest mb-3">Agent Performance</p>
+                <div className="bg-card dark:bg-card-dark/80 dark:backdrop-blur-xl rounded-2xl shadow-card dark:shadow-none border border-line dark:border-white/5 overflow-hidden transition-colors duration-300">
                     {agents.length === 0 ? (
-                        <p className="text-gray-400 text-sm text-center py-10">No agent data available</p>
+                        <div className="p-10 text-center">
+                            <p className="text-3xl mb-2">👥</p>
+                            <p className="text-body dark:text-body-dark text-sm font-medium">No agent data available</p>
+                            <p className="text-subtle dark:text-subtle-dark text-xs mt-1">Team data will appear once calls are synced.</p>
+                        </div>
                     ) : (
                         agents.map((agent, i) => <AgentRow key={agent._id || i} agent={agent} index={i} />)
                     )}
                 </div>
             </div>
 
-            {/* Quick Actions */}
+            {/* ── Quick Actions ── */}
             <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Quick Actions</p>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <p className="text-xs font-semibold text-subtle dark:text-subtle-dark uppercase tracking-widest mb-3">Quick Actions</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
                     {quickActions.map(a => (
-                        <button key={a.label} onClick={() => navigate(a.path)} className="rounded-2xl p-4 flex flex-col items-center gap-2 hover:opacity-80 transition-opacity" style={{ backgroundColor: a.soft }}>
+                        <button
+                            key={a.label}
+                            onClick={() => navigate(a.path)}
+                            className={`rounded-2xl p-4 flex flex-col items-center gap-2 border border-transparent hover:border-line dark:hover:border-line-dark hover:shadow-elevated hover:scale-[1.03] active:scale-[0.98] transition-all duration-300 cursor-pointer ${a.tw.split(' ').filter(c => !c.startsWith('text-')).join(' ')}`}
+                        >
                             <span className="text-2xl">{a.icon}</span>
-                            <span className="text-xs font-bold" style={{ color: a.color }}>{a.label}</span>
+                            <span className={`text-xs font-bold ${a.tw.split(' ').filter(c => c.startsWith('text-')).join(' ')}`}>{a.label}</span>
                         </button>
                     ))}
                 </div>

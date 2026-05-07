@@ -1,13 +1,35 @@
+// ============================================
+// SALESPERSON DASHBOARD — Premium Redesign (Light + Dark)
+// ============================================
+// CHANGES (UI only):
+//   • StatCard: bg-card/dark:bg-card-dark with colored icon pills, no inline styles
+//   • Performance banner: gradient from-primary to-accent
+//   • Rank badge: warning-soft tones, dark mode support
+//   • CallRow: theme-aware status colors, no inline styles
+//   • Sync CTA: accent-tinted card with hover lift
+//   • Recent calls: bg-card/dark:bg-card-dark glass card
+//   • Loading: themed spinner
+//   • dark: variant on EVERY element
+// UNCHANGED: All state, API calls, logic, data processing
+// ============================================
+
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import { api } from '../../services/api';
 
-const StatCard = ({ label, value, icon, color, soft }) => (
-    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-center" style={{ borderTopColor: color, borderTopWidth: 3 }}>
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg mx-auto mb-2" style={{ backgroundColor: soft }}>{icon}</div>
-        <p className="text-2xl font-extrabold text-gray-900">{value ?? '0'}</p>
-        <p className="text-xs text-gray-500 mt-0.5">{label}</p>
+const STAT_STYLES = {
+    total:    { icon: '📞', border: 'border-t-primary',  bg: 'bg-primary-soft dark:bg-primary/10' },
+    connect:  { icon: '✅', border: 'border-t-success',  bg: 'bg-success-soft dark:bg-success/10' },
+    missed:   { icon: '❌', border: 'border-t-danger',   bg: 'bg-danger-soft dark:bg-danger/10' },
+    duration: { icon: '⏱️', border: 'border-t-warning',  bg: 'bg-warning-soft dark:bg-warning/10' },
+};
+
+const StatCard = ({ label, value, icon, theme }) => (
+    <div className={`bg-card dark:bg-card-dark/80 dark:backdrop-blur-xl rounded-2xl p-4 shadow-card dark:shadow-none border border-line dark:border-white/5 text-center border-t-[3px] ${theme.border} hover:shadow-elevated hover:scale-[1.02] transition-all duration-300`}>
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg mx-auto mb-2 ${theme.bg}`}>{icon}</div>
+        <p className="text-2xl font-extrabold text-heading dark:text-heading-dark">{value ?? '0'}</p>
+        <p className="text-xs text-subtle dark:text-subtle-dark mt-0.5 tracking-wide">{label}</p>
     </div>
 );
 
@@ -23,22 +45,23 @@ const formatDuration = (seconds) => {
 const CallRow = ({ call }) => {
     const isConnected = call.callStatus === 'Connected';
     const isMissed = call.callStatus === 'Missed' || call.callStatus === 'Rejected';
-    const color = isConnected ? '#17C964' : isMissed ? '#F31260' : '#6B7A99';
-    const bg = isConnected ? '#E8FBF0' : isMissed ? '#FEE7EF' : '#F0F2F7';
+
+    const statusClass = isConnected ? 'text-success' : isMissed ? 'text-danger' : 'text-subtle dark:text-subtle-dark';
+    const iconBg = isConnected ? 'bg-success-soft dark:bg-success/10' : isMissed ? 'bg-danger-soft dark:bg-danger/10' : 'bg-raised dark:bg-raised-dark';
     const icon = isConnected ? '✅' : isMissed ? '❌' : '📞';
 
     const timeStr = call.calledAt ? new Date(call.calledAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '—';
 
     return (
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 last:border-0">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-base" style={{ backgroundColor: bg }}>{icon}</div>
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-line dark:border-line-dark last:border-0 hover:bg-hover-bg dark:hover:bg-hover-bg-dark transition-colors duration-150">
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-base ${iconBg}`}>{icon}</div>
             <div className="flex-1 min-w-0">
-                <p className="font-semibold text-gray-800 text-sm truncate">{call.customerName || call.customerNumber || 'Unknown'}</p>
-                <p className="text-xs text-gray-400">{call.callType} · {timeStr}</p>
+                <p className="font-semibold text-heading dark:text-heading-dark text-sm truncate">{call.customerName || call.customerNumber || 'Unknown'}</p>
+                <p className="text-xs text-subtle dark:text-subtle-dark">{call.callType} · {timeStr}</p>
             </div>
             <div className="text-right">
-                {isConnected && <p className="text-xs font-semibold text-gray-500">{formatDuration(call.durationSeconds)}</p>}
-                <p className="text-xs font-bold" style={{ color }}>{call.callStatus}</p>
+                {isConnected && <p className="text-xs font-semibold text-body dark:text-body-dark">{formatDuration(call.durationSeconds)}</p>}
+                <p className={`text-xs font-bold ${statusClass}`}>{call.callStatus}</p>
             </div>
         </div>
     );
@@ -79,7 +102,7 @@ export default function SalespersonDashboard() {
 
     if (loading) return (
         <div className="flex items-center justify-center h-96">
-            <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
         </div>
     );
 
@@ -97,75 +120,78 @@ export default function SalespersonDashboard() {
     };
 
     return (
-        <div className="p-6 max-w-4xl mx-auto space-y-5">
-            {/* Header */}
+        <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-5 animate-fade-in">
+
+            {/* ── Header ── */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-lg">
+                    <div className="w-12 h-12 rounded-full bg-role-sales-soft flex items-center justify-center text-role-sales font-bold text-lg">
                         {(user?.name || 'S').charAt(0).toUpperCase()}
                     </div>
                     <div>
-                        <p className="text-sm text-gray-500">Good {getGreeting()} 👋</p>
-                        <p className="text-lg font-extrabold text-gray-900">{user?.name || 'Salesperson'}</p>
+                        <p className="text-sm text-subtle dark:text-subtle-dark">Good {getGreeting()} 👋</p>
+                        <p className="text-lg font-extrabold text-heading dark:text-heading-dark tracking-tight">{user?.name || 'Salesperson'}</p>
                     </div>
                 </div>
-                <div className="bg-indigo-50 px-3 py-1.5 rounded-full text-xs font-bold text-indigo-600">
+                <div className="bg-primary-soft dark:bg-primary/15 px-3 py-1.5 rounded-full text-xs font-bold text-primary dark:text-primary-light">
                     {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                 </div>
             </div>
 
-            {/* Today's Performance Banner */}
-            <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-5 flex items-center justify-between text-white">
+            {/* ── Performance Banner ── */}
+            <div className="bg-gradient-to-r from-primary to-accent rounded-2xl p-5 flex items-center justify-between text-white shadow-glow-lg">
                 <div>
-                    <p className="font-bold text-lg">Today's Performance</p>
-                    <p className="text-indigo-100 text-xs mt-0.5">{new Date().toLocaleDateString('en-IN', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+                    <p className="font-bold text-lg tracking-tight">Today's Performance</p>
+                    <p className="text-white/70 text-xs mt-0.5">{new Date().toLocaleDateString('en-IN', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
                 </div>
                 <div className="text-center">
                     <p className="text-3xl font-extrabold">{connectRate}%</p>
-                    <p className="text-indigo-100 text-xs">Connect Rate</p>
+                    <p className="text-white/70 text-xs">Connect Rate</p>
                 </div>
             </div>
 
-            {/* Rank Badge */}
+            {/* ── Rank Badge ── */}
             {myRank && (
-                <div className="flex items-center gap-3 bg-amber-50 border border-amber-300 rounded-2xl p-4">
+                <div className="flex items-center gap-3 bg-warning-soft dark:bg-warning/10 border border-warning/20 dark:border-warning/15 rounded-2xl p-4 hover:shadow-elevated transition-all duration-300">
                     <span className="text-3xl">{myRank === 1 ? '🥇' : myRank === 2 ? '🥈' : myRank === 3 ? '🥉' : '🏅'}</span>
                     <div>
-                        <p className="font-extrabold text-amber-800">#{myRank} in Team This Week</p>
-                        <p className="text-amber-600 text-xs">{myRank === 1 ? 'You are the top performer! 🔥' : `${myRank - 1} ahead of you — keep going!`}</p>
+                        <p className="font-extrabold text-heading dark:text-heading-dark">#{myRank} in Team This Week</p>
+                        <p className="text-warning dark:text-warning text-xs">{myRank === 1 ? 'You are the top performer! 🔥' : `${myRank - 1} ahead of you — keep going!`}</p>
                     </div>
-                    <span className="ml-auto text-amber-600 font-bold">/{teamSize}</span>
+                    <span className="ml-auto text-warning font-bold">/{teamSize}</span>
                 </div>
             )}
 
-            {/* Stats Grid */}
+            {/* ── Stats Grid ── */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <StatCard label="Total Calls" value={totalCalls} icon="📞" color="#4F6EF7" soft="#EEF1FE" />
-                <StatCard label="Connected" value={connected} icon="✅" color="#17C964" soft="#E8FBF0" />
-                <StatCard label="Missed" value={missed} icon="❌" color="#F31260" soft="#FEE7EF" />
-                <StatCard label="Avg Duration" value={formatDuration(avgDuration)} icon="⏱️" color="#F5A524" soft="#FFF4E0" />
+                <StatCard label="Total Calls" value={totalCalls} icon="📞" theme={STAT_STYLES.total} />
+                <StatCard label="Connected" value={connected} icon="✅" theme={STAT_STYLES.connect} />
+                <StatCard label="Missed" value={missed} icon="❌" theme={STAT_STYLES.missed} />
+                <StatCard label="Avg Duration" value={formatDuration(avgDuration)} icon="⏱️" theme={STAT_STYLES.duration} />
             </div>
 
-            {/* Sync Button */}
-            <button onClick={() => navigate('/salesperson/sync')} className="w-full flex items-center gap-3 bg-teal-50 border border-teal-200 rounded-2xl p-4 hover:bg-teal-100 transition-colors text-left">
+            {/* ── Sync CTA ── */}
+            <button onClick={() => navigate('/salesperson/sync')} className="w-full flex items-center gap-3 bg-accent-soft dark:bg-accent/10 border border-accent/15 dark:border-accent/20 rounded-2xl p-4 hover:bg-accent/15 dark:hover:bg-accent/15 hover:shadow-elevated hover:scale-[1.01] active:scale-[0.99] transition-all duration-300 text-left cursor-pointer">
                 <span className="text-2xl">📲</span>
                 <div className="flex-1">
-                    <p className="font-bold text-teal-700 text-sm">Sync Phone Calls</p>
-                    <p className="text-teal-500 text-xs">Upload today's call logs from your device</p>
+                    <p className="font-bold text-accent-hover dark:text-accent-light text-sm">Sync Phone Calls</p>
+                    <p className="text-accent dark:text-accent text-xs opacity-70">Upload today's call logs from your device</p>
                 </div>
-                <span className="text-teal-500 text-xl">›</span>
+                <span className="text-accent text-xl">›</span>
             </button>
 
-            {/* Recent Calls */}
+            {/* ── Recent Calls ── */}
             <div>
                 <div className="flex items-center justify-between mb-3">
-                    <p className="font-bold text-gray-800 text-sm">Recent Calls</p>
-                    <button onClick={() => navigate('/salesperson/call-logs')} className="text-indigo-600 text-xs font-bold">View All →</button>
+                    <p className="font-bold text-heading dark:text-heading-dark text-sm tracking-tight">Recent Calls</p>
+                    <button onClick={() => navigate('/salesperson/call-logs')} className="text-primary dark:text-primary-light text-xs font-bold hover:underline underline-offset-4 transition-colors duration-200 cursor-pointer">View All →</button>
                 </div>
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="bg-card dark:bg-card-dark/80 dark:backdrop-blur-xl rounded-2xl border border-line dark:border-white/5 shadow-card dark:shadow-none overflow-hidden transition-colors duration-300">
                     {recentCalls.length === 0 ? (
-                        <div className="p-8 text-center">
-                            <p className="text-gray-400 text-sm">No calls recorded today. Sync your phone to get started.</p>
+                        <div className="p-10 text-center">
+                            <p className="text-3xl mb-2">📭</p>
+                            <p className="text-subtle dark:text-subtle-dark text-sm font-medium">No calls recorded today</p>
+                            <p className="text-subtle dark:text-subtle-dark text-xs mt-1">Sync your phone to get started.</p>
                         </div>
                     ) : (
                         recentCalls.map((call, i) => <CallRow key={call._id || i} call={call} />)

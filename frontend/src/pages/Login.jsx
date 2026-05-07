@@ -1,3 +1,17 @@
+// ============================================
+// LOGIN PAGE — Premium Redesign (Light + Dark)
+// ============================================
+// CHANGES (UI only):
+//   • bg-page / dark:bg-page-dark full-screen background
+//   • Glassmorphic card with backdrop-blur
+//   • Gradient CTA button (violet → cyan)
+//   • Brand-colored focus rings on inputs
+//   • Ambient glow orbs behind card
+//   • dark: variant on EVERY element
+//   • Hover micro-animations on all interactive elements
+// UNCHANGED: All state, logic, API calls, validation
+// ============================================
+
 import React, { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
@@ -78,39 +92,53 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-10">
-            <div className="w-full max-w-md">
+        <div className="min-h-screen bg-page dark:bg-page-dark flex items-center justify-center px-4 py-10 relative overflow-hidden transition-colors duration-300">
 
-                {/* Brand Block */}
+            {/* ── Ambient glow orbs ── */}
+            <div className="absolute top-1/3 left-1/3 w-[420px] h-[420px] bg-primary/8 dark:bg-primary/12 rounded-full blur-[100px] pointer-events-none" />
+            <div className="absolute bottom-1/4 right-1/4 w-[340px] h-[340px] bg-accent/6 dark:bg-accent/10 rounded-full blur-[100px] pointer-events-none" />
+
+            <div className="w-full max-w-md relative z-10 animate-fade-in">
+
+                {/* ── Brand Block ── */}
                 <div className="flex flex-col items-center mb-8">
-                    <div className="w-20 h-20 rounded-2xl bg-indigo-100 border border-indigo-200 shadow flex items-center justify-center mb-4">
-                        <div className="w-14 h-14 rounded-xl bg-indigo-600 flex items-center justify-center text-3xl">
+                    <div className="w-16 h-16 rounded-2xl bg-primary-soft dark:bg-primary/20 border border-primary-200 dark:border-primary/30 shadow-glow flex items-center justify-center mb-4 transition-all duration-300">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-xl shadow-lg">
                             📞
                         </div>
                     </div>
-                    <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Callyzer</h1>
-                    <p className="text-sm text-gray-500 mt-1">Call Management System</p>
+                    <h1 className="text-3xl font-extrabold text-heading dark:text-heading-dark tracking-tight">Callyzer</h1>
+                    <p className="text-sm text-subtle dark:text-subtle-dark mt-1 tracking-wide">Call Management System</p>
                 </div>
 
-                {/* Login Card */}
-                <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
-                    <h2 className="text-xl font-extrabold text-gray-900">Welcome back</h2>
-                    <p className="text-sm text-gray-500 mt-1 mb-6">Sign in to continue to your workspace</p>
+                {/* ── Login Card ── */}
+                <div className="bg-card dark:bg-card-dark/80 dark:backdrop-blur-xl rounded-2xl shadow-elevated dark:shadow-glow border border-line dark:border-white/5 p-7 transition-all duration-300">
+                    <h2 className="text-xl font-bold text-heading dark:text-heading-dark tracking-tight">Welcome back</h2>
+                    <p className="text-sm text-subtle dark:text-subtle-dark mt-1 mb-6">Sign in to continue to your workspace</p>
 
+                    {/* Error alert */}
                     {error && (
-                        <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm mb-5">
-                            ⚠️ {error}
+                        <div className="bg-danger-soft dark:bg-danger/10 border border-danger/20 dark:border-danger/20 text-danger rounded-xl px-4 py-3 text-sm mb-5 flex items-start gap-2.5 animate-fade-in">
+                            <span className="mt-0.5 shrink-0">⚠️</span>
+                            <span>{error}</span>
                         </div>
                     )}
 
-                    <form onSubmit={handleLogin} className="space-y-4">
-                        {/* Email */}
+                    <form onSubmit={handleLogin} className="space-y-5">
+
+                        {/* ── Email ── */}
                         <div>
-                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">
+                            <label className="block text-xs font-semibold text-subtle dark:text-subtle-dark uppercase tracking-widest mb-2">
                                 Email Address
                             </label>
-                            <div className={`flex items-center gap-2 bg-gray-50 border-2 rounded-xl px-3 py-3 transition-colors ${focusedField === 'email' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'}`}>
-                                <span className="text-base">✉️</span>
+                            <div className={`
+                                flex items-center gap-2.5 rounded-xl px-4 py-3 transition-all duration-200
+                                bg-input dark:bg-input-dark border-2
+                                ${focusedField === 'email'
+                                    ? 'border-primary dark:border-primary-light shadow-glow'
+                                    : 'border-line dark:border-line-dark hover:border-line-strong dark:hover:border-line-dark-strong'}
+                            `}>
+                                <span className="text-subtle dark:text-subtle-dark text-base">✉️</span>
                                 <input
                                     type="email"
                                     placeholder="you@company.com"
@@ -118,18 +146,24 @@ export default function Login() {
                                     onChange={e => setEmail(e.target.value)}
                                     onFocus={() => setFocusedField('email')}
                                     onBlur={() => setFocusedField(null)}
-                                    className="flex-1 bg-transparent text-gray-900 text-sm outline-none placeholder-gray-400"
+                                    className="flex-1 bg-transparent text-heading dark:text-heading-dark text-sm outline-none placeholder-subtle dark:placeholder-subtle-dark"
                                 />
                             </div>
                         </div>
 
-                        {/* Password */}
+                        {/* ── Password ── */}
                         <div>
-                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">
+                            <label className="block text-xs font-semibold text-subtle dark:text-subtle-dark uppercase tracking-widest mb-2">
                                 Password
                             </label>
-                            <div className={`flex items-center gap-2 bg-gray-50 border-2 rounded-xl px-3 py-3 transition-colors ${focusedField === 'password' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'}`}>
-                                <span className="text-base">🔒</span>
+                            <div className={`
+                                flex items-center gap-2.5 rounded-xl px-4 py-3 transition-all duration-200
+                                bg-input dark:bg-input-dark border-2
+                                ${focusedField === 'password'
+                                    ? 'border-primary dark:border-primary-light shadow-glow'
+                                    : 'border-line dark:border-line-dark hover:border-line-strong dark:hover:border-line-dark-strong'}
+                            `}>
+                                <span className="text-subtle dark:text-subtle-dark text-base">🔒</span>
                                 <input
                                     type={pwdVisible ? 'text' : 'password'}
                                     placeholder="Enter your password"
@@ -137,19 +171,23 @@ export default function Login() {
                                     onChange={e => setPassword(e.target.value)}
                                     onFocus={() => setFocusedField('password')}
                                     onBlur={() => setFocusedField(null)}
-                                    className="flex-1 bg-transparent text-gray-900 text-sm outline-none placeholder-gray-400"
+                                    className="flex-1 bg-transparent text-heading dark:text-heading-dark text-sm outline-none placeholder-subtle dark:placeholder-subtle-dark"
                                 />
-                                <button type="button" onClick={() => setPwdVisible(v => !v)} className="text-gray-400 hover:text-gray-600">
+                                <button
+                                    type="button"
+                                    onClick={() => setPwdVisible(v => !v)}
+                                    className="text-subtle dark:text-subtle-dark hover:text-heading dark:hover:text-heading-dark transition-colors duration-200 cursor-pointer"
+                                >
                                     {pwdVisible ? '🙈' : '👁️'}
                                 </button>
                             </div>
                         </div>
 
-                        {/* Submit */}
+                        {/* ── Submit Button ── */}
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-bold py-3.5 rounded-xl transition-colors text-sm shadow"
+                            className="w-full bg-gradient-to-r from-primary to-primary-hover hover:from-primary-light hover:to-primary dark:from-primary dark:to-accent dark:hover:from-primary-light dark:hover:to-accent-light disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition-all duration-300 text-sm shadow-elevated hover:shadow-float hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
                         >
                             {loading ? (
                                 <span className="flex items-center justify-center gap-2">
@@ -162,54 +200,61 @@ export default function Login() {
                             ) : 'Sign In'}
                         </button>
 
-                        {/* Links */}
-                        <div className="flex flex-col items-center gap-2 pt-1">
+                        {/* ── Links ── */}
+                        <div className="flex flex-col items-center gap-2.5 pt-1">
                             <button
                                 type="button"
                                 onClick={() => setForgotOpen(true)}
-                                className="text-sm text-indigo-600 font-semibold hover:underline flex items-center gap-1"
+                                className="text-sm text-primary dark:text-primary-light font-semibold hover:text-primary-hover dark:hover:text-primary-200 hover:underline underline-offset-4 flex items-center gap-1.5 transition-colors duration-200 cursor-pointer"
                             >
                                 🔑 Forgot Password?
                             </button>
-                            <div className="w-1 h-1 rounded-full bg-gray-300" />
-                            <Link to="/register" className="text-sm text-gray-500 hover:text-gray-700">
-                                New Team Lead? <span className="text-indigo-600 font-bold">Register here</span>
+                            <div className="w-1 h-1 rounded-full bg-line dark:bg-line-dark" />
+                            <Link to="/register" className="text-sm text-subtle dark:text-subtle-dark hover:text-body dark:hover:text-body-dark transition-colors duration-200">
+                                New Team Lead? <span className="text-primary dark:text-primary-light font-bold">Register here</span>
                             </Link>
                         </div>
                     </form>
                 </div>
 
-                {/* Footer */}
-                <div className="flex items-center justify-center gap-2 mt-6">
-                    <div className="w-1 h-1 rounded-full bg-gray-400" />
-                    <p className="text-xs text-gray-400 tracking-wide">Secure · Encrypted · Reliable</p>
-                    <div className="w-1 h-1 rounded-full bg-gray-400" />
+                {/* ── Footer ── */}
+                <div className="flex items-center justify-center gap-2.5 mt-6">
+                    <div className="w-1 h-1 rounded-full bg-subtle dark:bg-subtle-dark" />
+                    <p className="text-xs text-subtle dark:text-subtle-dark tracking-wide">Secure · Encrypted · Reliable</p>
+                    <div className="w-1 h-1 rounded-full bg-subtle dark:bg-subtle-dark" />
                 </div>
             </div>
 
-            {/* Forgot Password Modal */}
+            {/* ── Forgot Password Modal ── */}
             {forgotOpen && (
-                <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 w-full max-w-sm p-7 relative">
+                <div className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-card dark:bg-card-dark/90 dark:backdrop-blur-xl rounded-2xl shadow-float dark:shadow-glow-lg border border-line dark:border-white/5 w-full max-w-sm p-7 relative animate-fade-in transition-colors duration-300">
+
+                        {/* Close button */}
                         <button
                             onClick={() => { setForgotOpen(false); setForgotEmail(''); setForgotMsg(''); }}
-                            className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 font-bold"
+                            className="absolute top-4 right-4 w-8 h-8 rounded-full bg-raised dark:bg-raised-dark hover:bg-hover-bg dark:hover:bg-hover-bg-dark flex items-center justify-center text-subtle dark:text-subtle-dark hover:text-heading dark:hover:text-heading-dark font-bold transition-all duration-200 cursor-pointer"
                         >
                             ✕
                         </button>
 
                         <div className="flex flex-col items-center text-center">
-                            <div className="w-16 h-16 rounded-full bg-indigo-50 flex items-center justify-center mb-4 text-3xl">
+                            <div className="w-14 h-14 rounded-full bg-primary-soft dark:bg-primary/15 flex items-center justify-center mb-4 text-2xl">
                                 ✉️
                             </div>
-                            <h3 className="text-xl font-extrabold text-gray-900 mb-1">Forgot Password?</h3>
-                            <p className="text-sm text-gray-500 mb-5 leading-relaxed">
+                            <h3 className="text-xl font-bold text-heading dark:text-heading-dark tracking-tight mb-1">Forgot Password?</h3>
+                            <p className="text-sm text-subtle dark:text-subtle-dark mb-5 leading-relaxed">
                                 Enter your email address and we'll<br/>send you a reset link.
                             </p>
                         </div>
 
+                        {/* Status message */}
                         {forgotMsg && (
-                            <div className={`text-sm rounded-xl px-4 py-3 mb-4 text-center ${forgotMsg.startsWith('✅') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                            <div className={`text-sm rounded-xl px-4 py-3 mb-4 text-center transition-colors duration-200 ${
+                                forgotMsg.startsWith('✅')
+                                    ? 'bg-success-soft dark:bg-success/10 text-success'
+                                    : 'bg-danger-soft dark:bg-danger/10 text-danger'
+                            }`}>
                                 {forgotMsg}
                             </div>
                         )}
@@ -220,26 +265,26 @@ export default function Login() {
                                 placeholder="Enter your email address"
                                 value={forgotEmail}
                                 onChange={e => setForgotEmail(e.target.value)}
-                                className="w-full bg-gray-50 border-2 border-gray-200 focus:border-indigo-500 rounded-xl px-4 py-3 text-sm text-gray-900 outline-none placeholder-gray-400 transition-colors"
+                                className="w-full bg-input dark:bg-input-dark border-2 border-line dark:border-line-dark focus:border-primary dark:focus:border-primary-light rounded-xl px-4 py-3 text-sm text-heading dark:text-heading-dark outline-none placeholder-subtle dark:placeholder-subtle-dark transition-all duration-200"
                             />
                             <button
                                 type="submit"
                                 disabled={forgotLoading}
-                                className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-bold py-3.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2"
+                                className="w-full bg-gradient-to-r from-primary to-primary-hover dark:from-primary dark:to-accent hover:from-primary-light hover:to-primary disabled:opacity-50 text-white font-bold py-3.5 rounded-xl text-sm transition-all duration-300 flex items-center justify-center gap-2 hover:shadow-float hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
                             >
                                 {forgotLoading ? 'Sending...' : '📤 Send Reset Link'}
                             </button>
 
                             <div className="flex items-center gap-3">
-                                <div className="flex-1 h-px bg-gray-200" />
-                                <span className="text-xs text-gray-400">OR</span>
-                                <div className="flex-1 h-px bg-gray-200" />
+                                <div className="flex-1 h-px bg-line dark:bg-line-dark" />
+                                <span className="text-xs text-subtle dark:text-subtle-dark font-medium">OR</span>
+                                <div className="flex-1 h-px bg-line dark:bg-line-dark" />
                             </div>
 
                             <button
                                 type="button"
                                 onClick={() => { setForgotOpen(false); setForgotEmail(''); setForgotMsg(''); }}
-                                className="w-full py-3 text-sm text-gray-500 hover:text-gray-700 font-medium"
+                                className="w-full py-3 text-sm text-subtle dark:text-subtle-dark hover:text-heading dark:hover:text-heading-dark font-medium transition-colors duration-200 cursor-pointer"
                             >
                                 Cancel
                             </button>

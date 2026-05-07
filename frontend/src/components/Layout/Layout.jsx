@@ -1,179 +1,19 @@
-// import React, { useContext, useState } from 'react';
-// import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-// import { AuthContext } from '../../context/AuthContext';
+// ============================================
+// LAYOUT / SIDEBAR — Premium Redesign (Light + Dark)
+// ============================================
+// CHANGES (UI only):
+//   • Sidebar: always-dark premium look (bg-sidebar)
+//   • Active nav: gradient highlight from-primary/15 + left accent bar
+//   • Role colors: role-admin, role-business, role-sales
+//   • Top header: bg-card / dark:bg-card-dark with border-line
+//   • Main area: bg-page / dark:bg-page-dark
+//   • NEW: Dark/Light mode toggle button in sidebar footer
+//   • dark: variant on header and main content area
+//   • Hover micro-animations on all interactive elements
+// UNCHANGED: All MENUS, ROLE_COLORS logic, state, navigation, Outlet
+// ============================================
 
-// const MENUS = {
-//     super_admin: [
-//         { path: '/admin/dashboard',   label: 'Dashboard',   icon: '🏠' },
-//         { path: '/admin/approvals',   label: 'Approvals',   icon: '⏳' },
-//         { path: '/admin/users',       label: 'Users',       icon: '👥' },
-//         { path: '/admin/call-logs',   label: 'Call Logs',   icon: '📞' },
-//         { path: '/admin/reports',     label: 'Reports',     icon: '📊' },
-//         { path: '/admin/leaderboard', label: 'Leaderboard', icon: '🏆' },
-//         { path: '/admin/settings',    label: 'Settings',    icon: '⚙️' },
-//     ],
-//     business_user: [
-//         { path: '/business/dashboard',  label: 'Dashboard',   icon: '🏠' },
-//         { path: '/business/live-feed',  label: 'Live Feed',   icon: '🔴' },
-//         { path: '/business/team',       label: 'My Team',     icon: '👥' },
-//         { path: '/business/call-logs',  label: 'Call Logs',   icon: '📞' },
-//         { path: '/business/sync',       label: 'Sync Calls',  icon: '📲' },
-//         { path: '/business/reports',    label: 'Reports',     icon: '📊' },
-//         { path: '/business/leaderboard',label: 'Leaderboard', icon: '🏆' },
-//     ],
-//     salesperson: [
-//         { path: '/salesperson/dashboard',  label: 'Dashboard',   icon: '🏠' },
-//         { path: '/salesperson/call-logs',  label: 'Call Logs',   icon: '📞' },
-//         { path: '/salesperson/history',    label: 'My History',  icon: '🕑' },
-//         { path: '/salesperson/sync',       label: 'Sync Calls',  icon: '📲' },
-//         { path: '/salesperson/reports',    label: 'Reports',     icon: '📊' },
-//         { path: '/salesperson/leaderboard',label: 'Leaderboard', icon: '🏆' },
-//     ],
-// };
-
-// const ROLE_COLORS = {
-//     super_admin:   { color: 'bg-purple-500', text: 'text-purple-600', light: 'bg-purple-50', border: 'border-purple-200', label: 'Super Admin' },
-//     business_user: { color: 'bg-emerald-500', text: 'text-emerald-600', light: 'bg-emerald-50', border: 'border-emerald-200', label: 'Business User' },
-//     salesperson:   { color: 'bg-blue-500', text: 'text-blue-600', light: 'bg-blue-50', border: 'border-blue-200', label: 'Salesperson' },
-// };
-
-// export default function Layout() {
-//     const { user, logout } = useContext(AuthContext);
-//     const [sidebarOpen, setSidebarOpen] = useState(false);
-//     const navigate = useNavigate();
-//     const location = useLocation();
-
-//     const menuItems = MENUS[user?.role] || [];
-//     const roleConfig = ROLE_COLORS[user?.role] || ROLE_COLORS.salesperson;
-
-//     const handleNav = (path) => {
-//         navigate(path);
-//         setSidebarOpen(false);
-//     };
-
-//     const handleLogout = () => {
-//         logout();
-//         navigate('/login');
-//     };
-
-//     const currentLabel = menuItems.find(m => location.pathname === m.path)?.label || 'Callyzer';
-
-//     return (
-//         <div className="flex h-screen bg-gray-50 overflow-hidden">
-//             {/* Mobile overlay */}
-//             {sidebarOpen && (
-//                 <div
-//                     className="fixed inset-0 bg-black/50 z-20 lg:hidden"
-//                     onClick={() => setSidebarOpen(false)}
-//                 />
-//             )}
-
-//             {/* Sidebar */}
-//             <aside className={`
-//                 fixed top-0 left-0 bottom-0 w-64 bg-slate-900 z-30 flex flex-col
-//                 transform transition-transform duration-300 ease-in-out
-//                 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-//                 lg:translate-x-0 lg:static lg:z-auto
-//             `}>
-//                 {/* Brand */}
-//                 <div className={`p-5 border-b border-slate-700`}>
-//                     <div className="flex items-center gap-3">
-//                         <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-xl">
-//                             📞
-//                         </div>
-//                         <div>
-//                             <p className="text-white font-bold text-lg leading-none">Callyzer</p>
-//                             <p className="text-slate-400 text-xs mt-0.5">Call Management</p>
-//                         </div>
-//                     </div>
-//                 </div>
-
-//                 {/* User info */}
-//                 <div className="p-4 border-b border-slate-700">
-//                     <div className="flex items-center gap-3">
-//                         <div className={`w-10 h-10 rounded-full ${roleConfig.color} flex items-center justify-center text-white font-bold text-base`}>
-//                             {(user?.name || 'U').charAt(0).toUpperCase()}
-//                         </div>
-//                         <div className="flex-1 min-w-0">
-//                             <p className="text-white font-semibold text-sm truncate">{user?.name}</p>
-//                             <p className="text-slate-400 text-xs truncate">{user?.email}</p>
-//                         </div>
-//                     </div>
-//                     <div className={`mt-2 inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${roleConfig.light} ${roleConfig.text}`}>
-//                         {roleConfig.label}
-//                     </div>
-//                 </div>
-
-//                 {/* Nav */}
-//                 <nav className="flex-1 p-3 overflow-y-auto">
-//                     {menuItems.map((item) => {
-//                         const isActive = location.pathname === item.path;
-//                         return (
-//                             <button
-//                                 key={item.path}
-//                                 onClick={() => handleNav(item.path)}
-//                                 className={`
-//                                     w-full flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1
-//                                     text-left transition-all duration-150 text-sm font-medium
-//                                     ${isActive
-//                                         ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/30'
-//                                         : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-//                                     }
-//                                 `}
-//                             >
-//                                 <span className="text-base w-6 text-center">{item.icon}</span>
-//                                 <span>{item.label}</span>
-//                             </button>
-//                         );
-//                     })}
-//                 </nav>
-
-//                 {/* Logout */}
-//                 <div className="p-3 border-t border-slate-700">
-//                     <button
-//                         onClick={handleLogout}
-//                         className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all"
-//                     >
-//                         <span className="text-base">🚪</span>
-//                         <span>Logout</span>
-//                     </button>
-//                 </div>
-//             </aside>
-
-//             {/* Main area */}
-//             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-//                 {/* Top header */}
-//                 <header className="bg-white border-b border-gray-200 px-4 lg:px-6 py-3.5 flex items-center gap-4 shrink-0 shadow-sm">
-//                     <button
-//                         onClick={() => setSidebarOpen(true)}
-//                         className="lg:hidden p-1.5 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors"
-//                     >
-//                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-//                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-//                         </svg>
-//                     </button>
-//                     <h1 className="text-gray-800 font-semibold text-base">{currentLabel}</h1>
-//                     <div className="ml-auto flex items-center gap-3">
-//                         <span className="text-gray-400 text-sm hidden sm:block">
-//                             {new Date().toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' })}
-//                         </span>
-//                         <div className={`w-8 h-8 rounded-full ${roleConfig.color} flex items-center justify-center text-white font-bold text-sm`}>
-//                             {(user?.name || 'U').charAt(0).toUpperCase()}
-//                         </div>
-//                     </div>
-//                 </header>
-
-//                 {/* Page content */}
-//                 <main className="flex-1 overflow-y-auto">
-//                     <Outlet />
-//                 </main>
-//             </div>
-//         </div>
-//     );
-// }
-
-
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 
@@ -208,9 +48,9 @@ const MENUS = {
 };
 
 const ROLE_COLORS = {
-    super_admin:   { bg: 'bg-purple-600', text: 'text-purple-600', light: 'bg-purple-50', border: 'border-purple-200', label: 'Super Admin' },
-    business_user: { bg: 'bg-emerald-600', text: 'text-emerald-600', light: 'bg-emerald-50', border: 'border-emerald-200', label: 'Business User' },
-    salesperson:   { bg: 'bg-blue-600', text: 'text-blue-600', light: 'bg-blue-50', border: 'border-blue-200', label: 'Salesperson' },
+    super_admin:   { bg: 'bg-role-admin',   text: 'text-role-admin',   soft: 'bg-role-admin-soft',   label: 'Super Admin' },
+    business_user: { bg: 'bg-role-business', text: 'text-role-business', soft: 'bg-role-business-soft', label: 'Business User' },
+    salesperson:   { bg: 'bg-role-sales',    text: 'text-role-sales',    soft: 'bg-role-sales-soft',    label: 'Salesperson' },
 };
 
 export default function Layout() {
@@ -218,6 +58,24 @@ export default function Layout() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
+
+    // ── Dark mode toggle (stored in localStorage) ──
+    const [darkMode, setDarkMode] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('callyzer-theme') === 'dark';
+        }
+        return false;
+    });
+
+    useEffect(() => {
+        if (darkMode) {
+            document.documentElement.classList.add('dark');
+            localStorage.setItem('callyzer-theme', 'dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+            localStorage.setItem('callyzer-theme', 'light');
+        }
+    }, [darkMode]);
 
     const menuItems = MENUS[user?.role] || [];
     const roleConfig = ROLE_COLORS[user?.role] || ROLE_COLORS.salesperson;
@@ -235,49 +93,51 @@ export default function Layout() {
     const currentLabel = menuItems.find(m => location.pathname === m.path)?.label || 'Callyzer';
 
     return (
-        <div className="flex h-screen bg-gray-50 overflow-hidden">
-            {/* Mobile overlay */}
+        <div className="flex h-screen bg-page dark:bg-page-dark overflow-hidden transition-colors duration-300">
+
+            {/* ── Mobile overlay ── */}
             {sidebarOpen && (
-                <div className="fixed inset-0 bg-black/50 z-20 lg:hidden" onClick={() => setSidebarOpen(false)} />
+                <div className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm z-20 lg:hidden" onClick={() => setSidebarOpen(false)} />
             )}
 
-            {/* Sidebar - Fixed width with proper spacing */}
+            {/* ── Sidebar (always dark for premium look) ── */}
             <aside className={`
-                fixed top-0 left-0 bottom-0 w-72 bg-slate-900 z-30 flex flex-col shadow-2xl
+                fixed top-0 left-0 bottom-0 w-72 bg-sidebar z-30 flex flex-col
                 transform transition-transform duration-300 ease-in-out
                 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
                 lg:translate-x-0 lg:static lg:z-auto
             `}>
-                {/* Brand Section */}
-                <div className="px-5 py-6 border-b border-slate-700/50">
+
+                {/* Brand */}
+                <div className="px-5 py-5 border-b border-sidebar-border">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                        <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center shadow-glow">
                             <span className="text-xl">📞</span>
                         </div>
                         <div>
-                            <p className="text-white font-bold text-lg leading-tight">Callyzer</p>
-                            <p className="text-slate-400 text-xs">Call Management</p>
+                            <p className="text-sidebar-heading font-bold text-lg leading-tight tracking-tight">Callyzer</p>
+                            <p className="text-sidebar-text text-xs">Call Management</p>
                         </div>
                     </div>
                 </div>
 
-                {/* User Info Section */}
-                <div className="px-5 py-4 border-b border-slate-700/50">
+                {/* User Info */}
+                <div className="px-5 py-4 border-b border-sidebar-border">
                     <div className="flex items-center gap-3">
-                        <div className={`w-11 h-11 rounded-full ${roleConfig.bg} flex items-center justify-center text-white font-bold text-base shadow-lg shrink-0`}>
+                        <div className={`w-10 h-10 rounded-full ${roleConfig.bg} flex items-center justify-center text-white font-bold text-sm shadow-lg shrink-0`}>
                             {(user?.name || 'U').charAt(0).toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-white font-semibold text-sm truncate">{user?.name || 'User'}</p>
-                            <p className="text-slate-400 text-xs truncate">{user?.email || 'user@example.com'}</p>
+                            <p className="text-sidebar-heading font-semibold text-sm truncate">{user?.name || 'User'}</p>
+                            <p className="text-sidebar-text text-xs truncate">{user?.email || 'user@example.com'}</p>
                         </div>
                     </div>
-                    <div className="mt-3 inline-flex px-3 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-300">
+                    <div className={`mt-2.5 inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${roleConfig.soft} ${roleConfig.text}`}>
                         {roleConfig.label}
                     </div>
                 </div>
 
-                {/* Navigation Menu */}
+                {/* Navigation */}
                 <nav className="flex-1 overflow-y-auto px-3 py-4">
                     <div className="space-y-1">
                         {menuItems.map((item) => {
@@ -288,17 +148,21 @@ export default function Layout() {
                                     onClick={() => handleNav(item.path)}
                                     className={`
                                         w-full flex items-center gap-3 px-3 py-2.5 rounded-xl
-                                        transition-all duration-200 text-left
-                                        ${isActive 
-                                            ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/30' 
-                                            : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                                        transition-all duration-200 text-left cursor-pointer relative
+                                        ${isActive
+                                            ? 'bg-sidebar-active text-sidebar-heading shadow-glow'
+                                            : 'text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-heading'
                                         }
                                     `}
                                 >
-                                    <span className="text-xl w-7 text-center shrink-0">{item.icon}</span>
+                                    {/* Active indicator bar */}
+                                    {isActive && (
+                                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-primary rounded-r-full" />
+                                    )}
+                                    <span className="text-lg w-7 text-center shrink-0">{item.icon}</span>
                                     <span className="text-sm font-medium truncate">{item.label}</span>
                                     {isActive && (
-                                        <span className="ml-auto w-1.5 h-1.5 rounded-full bg-white/60"></span>
+                                        <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary animate-glow-pulse" />
                                     )}
                                 </button>
                             );
@@ -306,43 +170,59 @@ export default function Layout() {
                     </div>
                 </nav>
 
-                {/* Logout Button */}
-                <div className="p-4 border-t border-slate-700/50">
+                {/* Footer: Theme toggle + Logout */}
+                <div className="p-3 border-t border-sidebar-border space-y-1">
+
+                    {/* Dark/Light toggle */}
+                    <button
+                        onClick={() => setDarkMode(prev => !prev)}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-heading transition-all duration-200 cursor-pointer"
+                    >
+                        <span className="text-lg w-7 text-center shrink-0">{darkMode ? '☀️' : '🌙'}</span>
+                        <span className="truncate">{darkMode ? 'Light Mode' : 'Dark Mode'}</span>
+                        {/* Toggle pill */}
+                        <div className={`ml-auto w-9 h-5 rounded-full flex items-center px-0.5 transition-colors duration-300 ${darkMode ? 'bg-primary' : 'bg-sidebar-hover'}`}>
+                            <div className={`w-4 h-4 rounded-full bg-white shadow-md transform transition-transform duration-300 ${darkMode ? 'translate-x-4' : 'translate-x-0'}`} />
+                        </div>
+                    </button>
+
+                    {/* Logout */}
                     <button
                         onClick={handleLogout}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all duration-200"
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-danger hover:bg-danger/10 hover:text-danger transition-all duration-200 cursor-pointer"
                     >
-                        <span className="text-xl w-7 text-center shrink-0">🚪</span>
+                        <span className="text-lg w-7 text-center shrink-0">🚪</span>
                         <span className="truncate">Logout</span>
                     </button>
                 </div>
             </aside>
 
-            {/* Main Content Area */}
+            {/* ── Main Content Area ── */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-                {/* Top Header - Mobile Menu Button */}
-                <header className="bg-white border-b border-gray-200 px-4 lg:px-6 py-3.5 flex items-center gap-4 shrink-0 shadow-sm">
+
+                {/* Top Header */}
+                <header className="bg-card dark:bg-card-dark/80 dark:backdrop-blur-xl border-b border-line dark:border-line-dark px-4 lg:px-6 py-3.5 flex items-center gap-4 shrink-0 shadow-card dark:shadow-none transition-colors duration-300">
                     <button
                         onClick={() => setSidebarOpen(true)}
-                        className="lg:hidden p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors"
+                        className="lg:hidden p-2 rounded-lg hover:bg-hover-bg dark:hover:bg-hover-bg-dark text-body dark:text-body-dark transition-colors duration-200 cursor-pointer"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
                     </button>
-                    <h1 className="text-gray-800 font-semibold text-base truncate">{currentLabel}</h1>
+                    <h1 className="text-heading dark:text-heading-dark font-semibold text-base truncate tracking-tight">{currentLabel}</h1>
                     <div className="ml-auto flex items-center gap-3">
-                        <span className="text-gray-400 text-sm hidden sm:block">
+                        <span className="text-subtle dark:text-subtle-dark text-sm hidden sm:block">
                             {new Date().toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' })}
                         </span>
-                        <div className={`w-8 h-8 rounded-full ${roleConfig.bg} flex items-center justify-center text-white font-bold text-sm shadow-md shrink-0`}>
+                        <div className={`w-8 h-8 rounded-full ${roleConfig.bg} flex items-center justify-center text-white font-bold text-sm shadow-card shrink-0`}>
                             {(user?.name || 'U').charAt(0).toUpperCase()}
                         </div>
                     </div>
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 overflow-y-auto bg-gray-50">
+                <main className="flex-1 overflow-y-auto bg-page dark:bg-page-dark transition-colors duration-300">
                     <Outlet />
                 </main>
             </div>
