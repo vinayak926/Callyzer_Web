@@ -283,6 +283,62 @@ export const api = {
         const res = await fetch(`${API_BASE_URL}/calls?${params.toString()}`, { headers: authHeaders() });
         return res.json();
     },
+
+    // ── PLANS & SUBSCRIPTIONS ──────────────────────────────────
+
+    getPlans: async () => {
+    const res = await fetch(`${API_BASE_URL}/plans`);
+    return res.json();
+    },
+
+    startTrial: async (planSlug) => {
+    const res = await fetch(`${API_BASE_URL}/subscriptions/start-trial`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ planSlug }),
+    });
+    return res.json();
+    },
+
+    createOrder: async (planSlug, billingCycle = 'monthly') => {
+    const res = await fetch(`${API_BASE_URL}/subscriptions/create-order`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ planSlug, billingCycle }),
+    });
+    return res.json();
+    },
+
+    verifyPayment: async (data) => {
+    const res = await fetch(`${API_BASE_URL}/subscriptions/verify-payment`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify(data),
+    });
+    return res.json();
+    },
+
+    getMySubscription: async () => {
+    const res = await fetch(`${API_BASE_URL}/subscriptions/my`, {
+        headers: authHeaders(),
+    });
+    return res.json();
+    },
+
+    cancelSubscription: async () => {
+    const res = await fetch(`${API_BASE_URL}/subscriptions/cancel`, {
+        method: 'POST',
+        headers: authHeaders(),
+    });
+    return res.json();
+    },
+
+    getMyInvoices: async () => {
+    const res = await fetch(`${API_BASE_URL}/invoices`, {
+        headers: authHeaders(),
+    });
+    return res.json();
+    },
 };
 
 export default api;

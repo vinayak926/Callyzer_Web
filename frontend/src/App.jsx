@@ -35,6 +35,11 @@ import MyTeam from './pages/business/MyTeam';
 // Salesperson Pages
 import SalespersonDashboard from './pages/salesperson/SalespersonDashboard';
 
+import Pricing from './pages/Pricing';
+import Checkout from './pages/Checkout';
+import Subscription from './pages/business/Subscription';
+
+
 function AppRoutes() {
     const { user, token, loading } = React.useContext(AuthContext);
 
@@ -55,9 +60,11 @@ function AppRoutes() {
             <Route path="/login" element={!token ? <Login /> : <Navigate to="/" />} />
             <Route path="/register" element={!token ? <Register /> : <Navigate to="/" />} />
             <Route path="/pending" element={<Pending />} />
+            <Route path="/pricing" element={<Pricing />} />
 
             {/* Protected Routes */}
             <Route element={<PrivateRoute />}>
+                <Route path="/checkout" element={<Checkout />} />
                 <Route element={<Layout />}>
                     {/* Admin Routes */}
                     <Route element={<AdminRoute />}>
@@ -79,6 +86,7 @@ function AppRoutes() {
                         <Route path="/business/reports" element={<Reports />} />
                         <Route path="/business/leaderboard" element={<Leaderboard />} />
                         <Route path="/business/sync" element={<DeviceCallSync />} />
+                        <Route path="/business/subscription" element={<Subscription />} />
                     </Route>
 
                     {/* Salesperson Routes */}

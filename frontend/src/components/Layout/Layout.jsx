@@ -195,6 +195,7 @@ const MENUS = {
         { path: '/business/sync',       label: 'Sync Calls',  icon: '📲' },
         { path: '/business/reports',    label: 'Reports',     icon: '📊' },
         { path: '/business/leaderboard',label: 'Leaderboard', icon: '🏆' },
+        { path: '/business/subscription', label: 'Subscription', icon: '💳' },
     ],
     salesperson: [
         { path: '/salesperson/dashboard',  label: 'Dashboard',   icon: '🏠' },
