@@ -47,6 +47,11 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('user', JSON.stringify(userData));
         setToken(tokenValue);
         setUser(userData);
+
+        try {
+            window.postMessage({ type: 'CALLYZER_TOKEN_UPDATE', token: tokenValue }, '*');
+        } catch (_) {}
+
     };
 
     const logout = () => {

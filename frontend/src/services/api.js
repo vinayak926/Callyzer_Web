@@ -216,6 +216,25 @@ export const api = {
         return res.json();
     },
 
+    // NEW — Browser Extension: trigger call on mobile
+    triggerDial: async (phoneNumber, customerName = 'Unknown') => {
+        const res = await fetch(`${API_BASE_URL}/extension/dial`, {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify({ phoneNumber, customerName }),
+        });
+        return res.json();
+    },
+
+    // NEW — Extension popup status check
+    getExtensionStatus: async () => {
+        const res = await fetch(`${API_BASE_URL}/extension/status`, {
+            headers: authHeaders(),
+        });
+        return res.json();
+    },
+
+
     getTeamCallStats: async (params = {}) => {
         const q = new URLSearchParams();
         if (params.date) q.append('date', params.date);

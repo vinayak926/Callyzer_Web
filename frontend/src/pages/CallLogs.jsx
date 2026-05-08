@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useContext } from 'react';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import { api } from '../services/api';
 import { AuthContext } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
@@ -45,6 +45,68 @@ const DISP_COLORS   = {
     'Follow-up': 'bg-blue-100 text-blue-700',
 };
 const AV_COLORS = ['#4A68F0', '#7322C0', '#16BE62', '#F0204E', '#F0991A', '#0AAECC'];
+// NEW — Dial Button: triggers call on mobile via extension or direct API
+function DialButton({ phone, name }) {
+    const [state, setState] = React.useState('idle'); // idle|dialing|sent|error
+    const [msg,   setMsg  ] = React.useState('');
+
+    const handleDial = async (e) => {
+        e.stopPropagation();
+        if (state === 'dialing') return;
+        setState('dialing');
+        try {
+            // Try extension bridge first (if extension installed)
+            window.postMessage({
+                type:  'CALLYZER_DIAL',
+                phone,
+                name:  name || 'Unknown',
+                token: localStorage.getItem('token'),
+            }, '*');
+            // Also call API directly as fallback
+            // (extension will also call API, so only one reaches mobile)
+            const res = await api.triggerDial(phone, name);
+            if (res.success) {
+                setState('sent');
+                setMsg(res.socketSent ? 'Sent to mobile' : 'Open mobile app');
+            } else {
+                setState('error');
+                setMsg(res.message || 'Failed');
+            }
+        } catch {
+            setState('error');
+            setMsg('Connection error');
+        }
+        setTimeout(() => { setState('idle'); setMsg(''); }, 3000);
+    };
+
+    const cfg = {
+        idle:    { cls: 'bg-green-50 hover:bg-green-100 text-green-600', icon: '\u260E' },
+        dialing: { cls: 'bg-yellow-50 text-yellow-600',                  icon: '...' },
+        sent:    { cls: 'bg-blue-50 text-blue-600',                      icon: '\u2713' },
+        error:   { cls: 'bg-red-50 text-red-600',                        icon: '\u2715' },
+    }[state];
+
+    return (
+        <div className="relative inline-flex items-center">
+            <button
+                onClick={handleDial}
+                title={`Call ${phone} on mobile app`}
+                className={`
+                    opacity-0 group-hover:opacity-100 transition-all duration-150
+                    ${cfg.cls} w-7 h-7 rounded-lg flex items-center justify-center
+                    text-xs border border-current border-opacity-20 ml-2
+                    ${state === 'dialing' ? 'cursor-wait' : 'cursor-pointer'}
+                `}
+            >{cfg.icon}</button>
+            {msg && (
+                <span className={`absolute left-10 top-0 whitespace-nowrap text-xs
+                    font-semibold px-2 py-1 rounded-md shadow-sm z-10`,
+                    `${cfg.cls} border border-current border-opacity-20`}
+                >{msg}</span>
+            )}
+        </div>
+    );
+}
 
 // ── Call Modal ─────────────────────────────────────────
 function CallModal({ show, onClose, onDone, log }) {
@@ -550,7 +612,19 @@ export default function CallLogs() {
                                 {logs.map((log, idx) => (
                                     <tr key={log._id || idx} className="bg-white hover:bg-gray-50 transition-colors">
                                         <td className="px-4 py-3 font-semibold text-gray-900">{log.customerName || 'Unknown'}</td>
-                                        <td className="px-4 py-3 text-gray-500">{log.customerNumber || '—'}</td>
+                                        {/* <td className="px-4 py-3 text-gray-500">{log.customerNumber || '—'}</td> */}
+                                        <td className="px-4 py-3 text-gray-500">
+                                            <div className="flex items-center group">
+                                                <span>{log.customerNumber || '—'}</span>
+                                                {log.customerNumber && (
+                                                    <DialButton
+                                                        phone={log.customerNumber}
+                                                        name={log.customerName}
+                                                    />
+                                                )}
+                                            </div>
+                                        </td>
+
                                         <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-xs font-bold ${TYPE_COLORS[log.callType] || 'bg-gray-100 text-gray-600'}`}>{log.callType || '—'}</span></td>
                                         <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-xs font-bold flex items-center gap-1 w-fit ${STATUS_COLORS[log.callStatus] || 'bg-gray-100 text-gray-600'}`}><span className="w-1.5 h-1.5 rounded-full bg-current" />{log.callStatus}</span></td>
                                         <td className="px-4 py-3">{log.disposition ? <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${DISP_COLORS[log.disposition] || 'bg-gray-100 text-gray-600'}`}>{log.disposition}</span> : <span className="text-gray-300">—</span>}</td>
