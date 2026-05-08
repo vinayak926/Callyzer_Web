@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useContext } from 'react';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import { api } from '../services/api';
 import { AuthContext } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
@@ -23,20 +23,20 @@ const fmtTime = (d) => {
 };
 const getPresetDates = (preset) => {
     const today = new Date();
-    const fmt   = (d) => d.toISOString().split('T')[0];
-    const sub   = (d, n) => { const x = new Date(d); x.setDate(x.getDate() - n); return x; };
+    const fmt = (d) => d.toISOString().split('T')[0];
+    const sub = (d, n) => { const x = new Date(d); x.setDate(x.getDate() - n); return x; };
     switch (preset) {
-        case 'today':     return { from: fmt(today),          to: fmt(today) };
-        case 'yesterday': return { from: fmt(sub(today, 1)),  to: fmt(sub(today, 1)) };
-        case 'last7':     return { from: fmt(sub(today, 6)),  to: fmt(today) };
-        case 'last30':    return { from: fmt(sub(today, 29)), to: fmt(today) };
-        default:          return { from: '', to: '' };
+        case 'today': return { from: fmt(today), to: fmt(today) };
+        case 'yesterday': return { from: fmt(sub(today, 1)), to: fmt(sub(today, 1)) };
+        case 'last7': return { from: fmt(sub(today, 6)), to: fmt(today) };
+        case 'last30': return { from: fmt(sub(today, 29)), to: fmt(today) };
+        default: return { from: '', to: '' };
     }
 };
 
-const TYPE_COLORS   = { Incoming: 'bg-blue-100 text-blue-700', Outgoing: 'bg-purple-100 text-purple-700' };
+const TYPE_COLORS = { Incoming: 'bg-blue-100 text-blue-700', Outgoing: 'bg-purple-100 text-purple-700' };
 const STATUS_COLORS = { Connected: 'bg-green-100 text-green-700', Missed: 'bg-red-100 text-red-700', Rejected: 'bg-amber-100 text-amber-700' };
-const DISP_COLORS   = {
+const DISP_COLORS = {
     'Interested': 'bg-green-100 text-green-700',
     'Not Interested': 'bg-red-100 text-red-700',
     'Sale Done': 'bg-purple-100 text-purple-700',
@@ -45,6 +45,68 @@ const DISP_COLORS   = {
     'Follow-up': 'bg-blue-100 text-blue-700',
 };
 const AV_COLORS = ['#4A68F0', '#7322C0', '#16BE62', '#F0204E', '#F0991A', '#0AAECC'];
+// NEW — Dial Button: triggers call on mobile via extension or direct API
+function DialButton({ phone, name }) {
+    const [state, setState] = React.useState('idle'); // idle|dialing|sent|error
+    const [msg, setMsg] = React.useState('');
+
+    const handleDial = async (e) => {
+        e.stopPropagation();
+        if (state === 'dialing') return;
+        setState('dialing');
+        try {
+            // Try extension bridge first (if extension installed)
+            window.postMessage({
+                type: 'CALLYZER_DIAL',
+                phone,
+                name: name || 'Unknown',
+                token: localStorage.getItem('token'),
+            }, '*');
+            // Also call API directly as fallback
+            // (extension will also call API, so only one reaches mobile)
+            const res = await api.triggerDial(phone, name);
+            if (res.success) {
+                setState('sent');
+                setMsg(res.socketSent ? 'Sent to mobile' : 'Open mobile app');
+            } else {
+                setState('error');
+                setMsg(res.message || 'Failed');
+            }
+        } catch {
+            setState('error');
+            setMsg('Connection error');
+        }
+        setTimeout(() => { setState('idle'); setMsg(''); }, 3000);
+    };
+
+    const cfg = {
+        idle: { cls: 'bg-green-50 hover:bg-green-100 text-green-600', icon: '\u260E' },
+        dialing: { cls: 'bg-yellow-50 text-yellow-600', icon: '...' },
+        sent: { cls: 'bg-blue-50 text-blue-600', icon: '\u2713' },
+        error: { cls: 'bg-red-50 text-red-600', icon: '\u2715' },
+    }[state];
+
+    return (
+        <div className="relative inline-flex items-center">
+            <button
+                onClick={handleDial}
+                title={`Call ${phone} on mobile app`}
+                className={`
+                    opacity-0 group-hover:opacity-100 transition-all duration-150
+                    ${cfg.cls} w-7 h-7 rounded-lg flex items-center justify-center
+                    text-xs border border-current border-opacity-20 ml-2
+                    ${state === 'dialing' ? 'cursor-wait' : 'cursor-pointer'}
+                `}
+            >{cfg.icon}</button>
+            {msg && (
+                <span className={`absolute left-10 top-0 whitespace-nowrap text-xs
+                    font-semibold px-2 py-1 rounded-md shadow-sm z-10`,
+                    `${cfg.cls} border border-current border-opacity-20`}
+                >{msg}</span>
+            )}
+        </div>
+    );
+}
 
 // ── Call Modal ─────────────────────────────────────────
 function CallModal({ show, onClose, onDone, log }) {
@@ -56,24 +118,24 @@ function CallModal({ show, onClose, onDone, log }) {
         calledAt: new Date().toISOString().slice(0, 16),
         notes: '', disposition: '', followUpDate: '', followUpNotes: '',
     };
-    const [form, setForm]   = useState(empty);
+    const [form, setForm] = useState(empty);
     const [saving, setSaving] = useState(false);
-    const [error, setError]   = useState('');
+    const [error, setError] = useState('');
 
     useEffect(() => {
         if (!show) return;
         if (log) {
             setForm({
-                customerName:    log.customerName    || '',
-                customerNumber:  log.customerNumber  || '',
-                callType:        log.callType        || 'Outgoing',
-                callStatus:      log.callStatus      || 'Connected',
+                customerName: log.customerName || '',
+                customerNumber: log.customerNumber || '',
+                callType: log.callType || 'Outgoing',
+                callStatus: log.callStatus || 'Connected',
                 durationSeconds: log.durationSeconds?.toString() || '',
-                calledAt:        log.calledAt ? new Date(log.calledAt).toISOString().slice(0, 16) : '',
-                notes:           log.notes           || '',
-                disposition:     log.disposition     || '',
-                followUpDate:    log.followUpDate    ? new Date(log.followUpDate).toISOString().split('T')[0] : '',
-                followUpNotes:   log.followUpNotes   || '',
+                calledAt: log.calledAt ? new Date(log.calledAt).toISOString().slice(0, 16) : '',
+                notes: log.notes || '',
+                disposition: log.disposition || '',
+                followUpDate: log.followUpDate ? new Date(log.followUpDate).toISOString().split('T')[0] : '',
+                followUpNotes: log.followUpNotes || '',
             });
         } else {
             setForm(empty);
@@ -89,19 +151,19 @@ function CallModal({ show, onClose, onDone, log }) {
         setSaving(true); setError('');
         try {
             const callData = {
-                customerName:    form.customerName.trim() || 'Unknown',
-                customerNumber:  form.customerNumber.trim(),
-                callType:        form.callType,
-                callStatus:      form.callStatus,
+                customerName: form.customerName.trim() || 'Unknown',
+                customerNumber: form.customerNumber.trim(),
+                callType: form.callType,
+                callStatus: form.callStatus,
                 durationSeconds: Number(form.durationSeconds) || 0,
-                calledAt:        form.calledAt ? new Date(form.calledAt).toISOString() : new Date().toISOString(),
-                notes:           form.notes,
-                disposition:     form.disposition,
-                followUpDate:    form.followUpDate || null,
-                followUpNotes:   form.followUpNotes,
+                calledAt: form.calledAt ? new Date(form.calledAt).toISOString() : new Date().toISOString(),
+                notes: form.notes,
+                disposition: form.disposition,
+                followUpDate: form.followUpDate || null,
+                followUpNotes: form.followUpNotes,
             };
             if (isEdit) await api.updateCallLog(log._id, callData);
-            else        await api.createCallLog(callData);
+            else await api.createCallLog(callData);
             onDone(isEdit ? 'Call log updated!' : 'Call log added!');
         } catch {
             setError('Something went wrong. Please try again.');
@@ -110,9 +172,9 @@ function CallModal({ show, onClose, onDone, log }) {
         }
     };
 
-    const CALL_TYPES    = ['Outgoing', 'Incoming'];
+    const CALL_TYPES = ['Outgoing', 'Incoming'];
     const CALL_STATUSES = ['Connected', 'Missed', 'Rejected'];
-    const DISPOSITIONS  = ['', 'Interested', 'Not Interested', 'Callback', 'Sale Done', 'Wrong Number', 'Follow-up'];
+    const DISPOSITIONS = ['', 'Interested', 'Not Interested', 'Callback', 'Sale Done', 'Wrong Number', 'Follow-up'];
 
     if (!show) return null;
     return (
@@ -197,7 +259,7 @@ function DeleteModal({ show, onClose, onDone, log }) {
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-7 text-center">
                 <div className="text-5xl mb-4">🗑️</div>
                 <h3 className="text-xl font-extrabold text-gray-900 mb-2">Delete Call Log?</h3>
-                <p className="text-sm text-gray-500 mb-6">{log.customerName || 'This record'} • {log.customerNumber || ''}<br/>This action cannot be undone.</p>
+                <p className="text-sm text-gray-500 mb-6">{log.customerName || 'This record'} • {log.customerNumber || ''}<br />This action cannot be undone.</p>
                 <div className="flex gap-3">
                     <button onClick={onClose} className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-sm font-bold text-gray-600 hover:bg-gray-50">Cancel</button>
                     <button onClick={handleDelete} disabled={deleting} className="flex-1 py-3 rounded-xl bg-red-500 hover:bg-red-600 disabled:opacity-60 text-white text-sm font-bold">
@@ -211,10 +273,10 @@ function DeleteModal({ show, onClose, onDone, log }) {
 
 // ── Bulk Import Modal ──────────────────────────────────
 function BulkImportModal({ show, onClose, onDone }) {
-    const [csv, setCsv]           = useState('');
+    const [csv, setCsv] = useState('');
     const [importing, setImporting] = useState(false);
-    const [error, setError]       = useState('');
-    const [preview, setPreview]   = useState(0);
+    const [error, setError] = useState('');
+    const [preview, setPreview] = useState(0);
 
     const parseCSVLine = (line) => {
         const result = []; let current = '', inQuotes = false;
@@ -232,7 +294,7 @@ function BulkImportModal({ show, onClose, onDone }) {
     useEffect(() => {
         if (!csv.trim()) { setPreview(0); return; }
         const lines = csv.trim().split('\n').filter(l => l.trim());
-        const data  = isHeaderRow(lines[0]) ? lines.slice(1) : lines;
+        const data = isHeaderRow(lines[0]) ? lines.slice(1) : lines;
         const valid = data.filter(l => { const c = parseCSVLine(l); return c.length >= 2 && c[1] && c[1].replace(/\D/g, '').length >= 7; });
         setPreview(valid.length);
     }, [csv]);
@@ -242,15 +304,15 @@ function BulkImportModal({ show, onClose, onDone }) {
         setImporting(true); setError('');
         try {
             const lines = csv.trim().split('\n').filter(l => l.trim());
-            const data  = isHeaderRow(lines[0]) ? lines.slice(1) : lines;
+            const data = isHeaderRow(lines[0]) ? lines.slice(1) : lines;
             const calls = []; const errors = [];
             data.forEach((line, idx) => {
-                const cols  = parseCSVLine(line);
+                const cols = parseCSVLine(line);
                 const phone = cols[1]?.replace(/\s/g, '') || '';
                 if (!phone || phone.replace(/\D/g, '').length < 7) { errors.push(`Row ${idx + 1}: Invalid phone`); return; }
                 let calledAt = new Date().toISOString();
                 if (cols[5]?.trim()) { const p = new Date(cols[5].trim()); if (!isNaN(p.getTime())) calledAt = p.toISOString(); }
-                let callType   = normalize(cols[2] || 'Outgoing'); if (callType !== 'Incoming') callType = 'Outgoing';
+                let callType = normalize(cols[2] || 'Outgoing'); if (callType !== 'Incoming') callType = 'Outgoing';
                 let callStatus = normalize(cols[3] || 'Connected'); if (!['Connected', 'Missed', 'Rejected'].includes(callStatus)) callStatus = 'Connected';
                 calls.push({ customerName: cols[0]?.trim() || 'Unknown', customerNumber: phone, callType, callStatus, durationSeconds: parseInt(cols[4]) || 0, calledAt, notes: cols[6]?.trim() || '', disposition: cols[7]?.trim() || '' });
             });
@@ -301,34 +363,34 @@ function BulkImportModal({ show, onClose, onDone }) {
 // ── Main Component ─────────────────────────────────────
 export default function CallLogs() {
     const { user } = useContext(AuthContext);
-    const [logs, setLogs]             = useState([]);
-    const [stats, setStats]           = useState(null);
+    const [logs, setLogs] = useState([]);
+    const [stats, setStats] = useState(null);
     const [pagination, setPagination] = useState({ total: 0, pages: 1, page: 1 });
-    const [loading, setLoading]       = useState(true);
+    const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [error, setError]           = useState(null);
+    const [error, setError] = useState(null);
 
-    const [search, setSearch]             = useState('');
-    const [typeFilter, setTypeFilter]     = useState('All');
+    const [search, setSearch] = useState('');
+    const [typeFilter, setTypeFilter] = useState('All');
     const [statusFilter, setStatusFilter] = useState('All');
-    const [dateFrom, setDateFrom]         = useState('');
-    const [dateTo, setDateTo]             = useState('');
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
     const [activePreset, setActivePreset] = useState('');
-    const [page, setPage]                 = useState(1);
-    const [sortField, setSortField]       = useState('calledAt');
-    const [sortDir, setSortDir]           = useState('desc');
-    const [agents, setAgents]             = useState([]);
+    const [page, setPage] = useState(1);
+    const [sortField, setSortField] = useState('calledAt');
+    const [sortDir, setSortDir] = useState('desc');
+    const [agents, setAgents] = useState([]);
     const [selectedAgent, setSelectedAgent] = useState('');
 
-    const [showAdd, setShowAdd]       = useState(false);
+    const [showAdd, setShowAdd] = useState(false);
     const [showImport, setShowImport] = useState(false);
-    const [editLog, setEditLog]       = useState(null);
-    const [deleteLog, setDeleteLog]   = useState(null);
-    const [toast, setToast]           = useState('');
+    const [editLog, setEditLog] = useState(null);
+    const [deleteLog, setDeleteLog] = useState(null);
+    const [toast, setToast] = useState('');
 
     const userRole = user?.role || 'salesperson';
-    const canAdd    = ['salesperson', 'business_user', 'super_admin'].includes(userRole);
-    const isAdmin   = ['super_admin'].includes(userRole);
+    const canAdd = ['salesperson', 'business_user', 'super_admin'].includes(userRole);
+    const isAdmin = ['super_admin'].includes(userRole);
     const canDelete = userRole === 'super_admin';
     const canViewAll = ['super_admin', 'business_user'].includes(userRole);
 
@@ -336,7 +398,7 @@ export default function CallLogs() {
         if (canViewAll) {
             api.getCallLogs({ limit: 100 }).then(res => {
                 // agents would come from a separate endpoint
-            }).catch(() => {});
+            }).catch(() => { });
         }
     }, [userRole]);
 
@@ -355,12 +417,12 @@ export default function CallLogs() {
         setError(null);
         try {
             const params = { page: reset ? 1 : page, limit: 20, sortField, sortDir };
-            if (search.trim())                params.search     = search.trim();
-            if (typeFilter !== 'All')         params.callType   = typeFilter;
-            if (statusFilter !== 'All')       params.callStatus = statusFilter;
-            if (dateFrom.trim())              params.dateFrom   = dateFrom;
-            if (dateTo.trim())                params.dateTo     = dateTo;
-            if (selectedAgent.trim())         params.agentId    = selectedAgent;
+            if (search.trim()) params.search = search.trim();
+            if (typeFilter !== 'All') params.callType = typeFilter;
+            if (statusFilter !== 'All') params.callStatus = statusFilter;
+            if (dateFrom.trim()) params.dateFrom = dateFrom;
+            if (dateTo.trim()) params.dateTo = dateTo;
+            if (selectedAgent.trim()) params.agentId = selectedAgent;
 
             const response = await api.getCallLogs(params);
             let logsData = [], pagData = { total: 0, pages: 1, page: 1 };
@@ -374,15 +436,15 @@ export default function CallLogs() {
 
             try {
                 const statsParams = {};
-                if (search.trim())        statsParams.search     = search.trim();
-                if (typeFilter !== 'All') statsParams.callType   = typeFilter;
+                if (search.trim()) statsParams.search = search.trim();
+                if (typeFilter !== 'All') statsParams.callType = typeFilter;
                 if (statusFilter !== 'All') statsParams.callStatus = statusFilter;
-                if (dateFrom.trim())      statsParams.dateFrom   = dateFrom;
-                if (dateTo.trim())        statsParams.dateTo     = dateTo;
-                if (selectedAgent.trim()) statsParams.agentId    = selectedAgent;
+                if (dateFrom.trim()) statsParams.dateFrom = dateFrom;
+                if (dateTo.trim()) statsParams.dateTo = dateTo;
+                if (selectedAgent.trim()) statsParams.agentId = selectedAgent;
                 const s = await api.getCallStats(statsParams);
                 if (s?.success !== false) setStats(s);
-            } catch {}
+            } catch { }
         } catch (err) {
             setError(err.message || 'Network error.');
         } finally {
@@ -414,18 +476,18 @@ export default function CallLogs() {
         ]);
         const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n');
         const blob = new Blob([csv], { type: 'text/csv' });
-        const url  = URL.createObjectURL(blob);
-        const a    = document.createElement('a'); a.href = url; a.download = 'call-logs.csv'; a.click();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'call-logs.csv'; a.click();
         URL.revokeObjectURL(url);
     };
 
     const statsItems = stats ? [
-        { label: 'Total',     value: pagination.total, color: 'text-indigo-600' },
-        { label: 'Incoming',  value: stats.incoming  ?? stats.totalIncoming  ?? 0, color: 'text-blue-600' },
-        { label: 'Outgoing',  value: stats.outgoing  ?? stats.totalOutgoing  ?? 0, color: 'text-purple-600' },
+        { label: 'Total', value: pagination.total, color: 'text-indigo-600' },
+        { label: 'Incoming', value: stats.incoming ?? stats.totalIncoming ?? 0, color: 'text-blue-600' },
+        { label: 'Outgoing', value: stats.outgoing ?? stats.totalOutgoing ?? 0, color: 'text-purple-600' },
         { label: 'Connected', value: stats.connected ?? stats.totalConnected ?? 0, color: 'text-green-600' },
-        { label: 'Missed',    value: stats.missed    ?? stats.totalMissed    ?? 0, color: 'text-red-600' },
-        { label: 'Today',     value: stats.todayCalls ?? stats.today          ?? 0, color: 'text-amber-600' },
+        { label: 'Missed', value: stats.missed ?? stats.totalMissed ?? 0, color: 'text-red-600' },
+        { label: 'Today', value: stats.todayCalls ?? stats.today ?? 0, color: 'text-amber-600' },
     ] : [];
 
     return (
@@ -550,12 +612,24 @@ export default function CallLogs() {
                                 {logs.map((log, idx) => (
                                     <tr key={log._id || idx} className="bg-white hover:bg-gray-50 transition-colors">
                                         <td className="px-4 py-3 font-semibold text-gray-900">{log.customerName || 'Unknown'}</td>
-                                        <td className="px-4 py-3 text-gray-500">{log.customerNumber || '—'}</td>
+                                        {/* <td className="px-4 py-3 text-gray-500">{log.customerNumber || '—'}</td> */}
+                                        <td className="px-4 py-3 text-gray-500">
+                                            <div className="flex items-center group">
+                                                <span>{log.customerNumber || '—'}</span>
+                                                {log.customerNumber && (
+                                                    <DialButton
+                                                        phone={log.customerNumber}
+                                                        name={log.customerName}
+                                                    />
+                                                )}
+                                            </div>
+                                        </td>
+
                                         <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-xs font-bold ${TYPE_COLORS[log.callType] || 'bg-gray-100 text-gray-600'}`}>{log.callType || '—'}</span></td>
                                         <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-xs font-bold flex items-center gap-1 w-fit ${STATUS_COLORS[log.callStatus] || 'bg-gray-100 text-gray-600'}`}><span className="w-1.5 h-1.5 rounded-full bg-current" />{log.callStatus}</span></td>
                                         <td className="px-4 py-3">{log.disposition ? <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${DISP_COLORS[log.disposition] || 'bg-gray-100 text-gray-600'}`}>{log.disposition}</span> : <span className="text-gray-300">—</span>}</td>
                                         <td className="px-4 py-3 text-gray-600 font-medium">{fmtDuration(log.durationSeconds)}</td>
-                                        <td className="px-4 py-3 text-gray-500 text-xs">{fmtDate(log.calledAt)}<br/><span className="text-gray-400">{fmtTime(log.calledAt)}</span></td>
+                                        <td className="px-4 py-3 text-gray-500 text-xs">{fmtDate(log.calledAt)}<br /><span className="text-gray-400">{fmtTime(log.calledAt)}</span></td>
                                         {canViewAll && <td className="px-4 py-3 text-gray-500 text-xs">{log.agent?.name || '—'}</td>}
                                         <td className="px-4 py-3">
                                             <div className="flex items-center gap-1.5">
@@ -615,8 +689,8 @@ export default function CallLogs() {
             )}
 
             {/* Modals */}
-            <CallModal show={showAdd}    onClose={() => setShowAdd(false)}   onDone={onDone} />
-            <CallModal show={!!editLog}  onClose={() => setEditLog(null)}    onDone={onDone} log={editLog} />
+            <CallModal show={showAdd} onClose={() => setShowAdd(false)} onDone={onDone} />
+            <CallModal show={!!editLog} onClose={() => setEditLog(null)} onDone={onDone} log={editLog} />
             <DeleteModal show={!!deleteLog} onClose={() => setDeleteLog(null)} onDone={onDone} log={deleteLog} />
             <BulkImportModal show={showImport} onClose={() => setShowImport(false)} onDone={onDone} />
         </div>

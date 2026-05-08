@@ -216,6 +216,25 @@ export const api = {
         return res.json();
     },
 
+    // NEW — Browser Extension: trigger call on mobile
+    triggerDial: async (phoneNumber, customerName = 'Unknown') => {
+        const res = await fetch(`${API_BASE_URL}/extension/dial`, {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify({ phoneNumber, customerName }),
+        });
+        return res.json();
+    },
+
+    // NEW — Extension popup status check
+    getExtensionStatus: async () => {
+        const res = await fetch(`${API_BASE_URL}/extension/status`, {
+            headers: authHeaders(),
+        });
+        return res.json();
+    },
+
+
     getTeamCallStats: async (params = {}) => {
         const q = new URLSearchParams();
         if (params.date) q.append('date', params.date);
@@ -287,57 +306,57 @@ export const api = {
     // ── PLANS & SUBSCRIPTIONS ──────────────────────────────────
 
     getPlans: async () => {
-    const res = await fetch(`${API_BASE_URL}/plans`);
-    return res.json();
+        const res = await fetch(`${API_BASE_URL}/plans`);
+        return res.json();
     },
 
     startTrial: async (planSlug) => {
-    const res = await fetch(`${API_BASE_URL}/subscriptions/start-trial`, {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify({ planSlug }),
-    });
-    return res.json();
+        const res = await fetch(`${API_BASE_URL}/subscriptions/start-trial`, {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify({ planSlug }),
+        });
+        return res.json();
     },
 
     createOrder: async (planSlug, billingCycle = 'monthly') => {
-    const res = await fetch(`${API_BASE_URL}/subscriptions/create-order`, {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify({ planSlug, billingCycle }),
-    });
-    return res.json();
+        const res = await fetch(`${API_BASE_URL}/subscriptions/create-order`, {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify({ planSlug, billingCycle }),
+        });
+        return res.json();
     },
 
     verifyPayment: async (data) => {
-    const res = await fetch(`${API_BASE_URL}/subscriptions/verify-payment`, {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify(data),
-    });
-    return res.json();
+        const res = await fetch(`${API_BASE_URL}/subscriptions/verify-payment`, {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify(data),
+        });
+        return res.json();
     },
 
     getMySubscription: async () => {
-    const res = await fetch(`${API_BASE_URL}/subscriptions/my`, {
-        headers: authHeaders(),
-    });
-    return res.json();
+        const res = await fetch(`${API_BASE_URL}/subscriptions/my`, {
+            headers: authHeaders(),
+        });
+        return res.json();
     },
 
     cancelSubscription: async () => {
-    const res = await fetch(`${API_BASE_URL}/subscriptions/cancel`, {
-        method: 'POST',
-        headers: authHeaders(),
-    });
-    return res.json();
+        const res = await fetch(`${API_BASE_URL}/subscriptions/cancel`, {
+            method: 'POST',
+            headers: authHeaders(),
+        });
+        return res.json();
     },
 
     getMyInvoices: async () => {
-    const res = await fetch(`${API_BASE_URL}/invoices`, {
-        headers: authHeaders(),
-    });
-    return res.json();
+        const res = await fetch(`${API_BASE_URL}/invoices`, {
+            headers: authHeaders(),
+        });
+        return res.json();
     },
 };
 
