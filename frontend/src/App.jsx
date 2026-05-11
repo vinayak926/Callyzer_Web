@@ -32,6 +32,7 @@ import AdminApprovals from './pages/admin/AdminApprovals';
 import BusinessDashboard from './pages/business/BusinessDashboard';
 import MyTeam from './pages/business/MyTeam';
 import BusinessLeads from './pages/business/Leads';
+import WorkedLeads    from './pages/business/WorkedLeads'; 
 
 // Salesperson Pages
 import SalespersonDashboard from './pages/salesperson/SalespersonDashboard';
@@ -84,6 +85,7 @@ function AppRoutes() {
                         <Route path="/business/dashboard" element={<BusinessDashboard />} />
                         <Route path="/business/team" element={<MyTeam />} />
                         <Route path="/business/leads"        element={<BusinessLeads />} />
+                        <Route path='/business/worked-leads' element={<WorkedLeads />} />  
                         <Route path="/business/live-feed" element={<LiveFeed />} />
                         <Route path="/business/call-logs" element={<CallLogs />} />
                         <Route path="/business/reports" element={<Reports />} />

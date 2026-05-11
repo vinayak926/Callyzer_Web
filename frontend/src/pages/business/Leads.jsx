@@ -7,19 +7,31 @@ import { api } from '../../services/api';
 
 // ── Status badge colours ──────────────────────────────────────
 const STATUS_STYLES = {
-  'Interested':     'bg-emerald-100 text-emerald-700 border border-emerald-200',
-  'Not Interested': 'bg-red-100 text-red-700 border border-red-200',
-  'DNP':            'bg-amber-100 text-amber-700 border border-amber-200',
+  "Fresh Lead":     "bg-blue-100 text-blue-700 border border-blue-200",   // ✅ NAYA
+  "Interested":     "bg-emerald-100 text-emerald-700 border border-emerald-200",
+  "Not Interested": "bg-red-100 text-red-700 border border-red-200",
+  "DNP":            "bg-amber-100 text-amber-700 border border-amber-200",
+
 };
 
-const STATUSES = ['Interested', 'Not Interested', 'DNP'];
+// const STATUSES = ['Interested', 'Not Interested', 'DNP'];
+const STATUSES = ["Fresh Lead", "Interested", "Not Interested", "DNP"];
 
 // ── Empty form state ──────────────────────────────────────────
+// const EMPTY_FORM = {
+//   customerName: '', mobileNumber: '', courseName: '',
+//   leadSource: '', status: 'Interested',
+//   followUpDescription: '', followUpDate: '',
+// };
+
 const EMPTY_FORM = {
-  customerName: '', mobileNumber: '', courseName: '',
-  leadSource: '', status: 'Interested',
-  followUpDescription: '', followUpDate: '',
+  customerName: "",
+  mobileNumber: "",
+  courseName:   "",
+  leadSource:   "",
+  assignedTo: "",
 };
+
 
 // ─────────────────────────────────────────────────────────────
 export default function BusinessLeads() {
@@ -50,6 +62,8 @@ export default function BusinessLeads() {
   const [importLoading, setImportLoading] = useState(false);
   const fileRef = useRef();
 
+  const [salespersons, setSalespersons] = useState([]);
+
   // ── Data fetching ─────────────────────────────────────────
   const fetchLeads = useCallback(async () => {
     setLoading(true);
@@ -71,6 +85,16 @@ export default function BusinessLeads() {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3000);
   };
+
+  useEffect(() => {
+    const fetchTeam = async () => {
+      try {
+        const data = await api.getMyTeam();  // ← SAHI NAAM
+        setSalespersons(data.salespersons || []);
+      } catch {}
+    };
+    fetchTeam();
+  }, []);
 
   // ── Manual add / edit submit ──────────────────────────────
   const handleSubmit = async () => {
@@ -194,10 +218,11 @@ export default function BusinessLeads() {
       {/* Stats cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: 'Total',           value: stats.total           || 0, color: 'text-gray-900',    bg: 'bg-gray-50',    border: 'border-gray-200' },
-          { label: 'Interested',      value: stats.interested      || 0, color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' },
-          { label: 'Not Interested',  value: stats.notInterested   || 0, color: 'text-red-700',     bg: 'bg-red-50',     border: 'border-red-200' },
-          { label: 'Pending Follow-ups', value: stats.pendingFollowups || 0, color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200' },
+            { label: "Total",          value: stats.total       || 0, color: "text-gray-900",    bg: "bg-gray-50",    border: "border-gray-200" },
+            { label: "Fresh Leads",    value: stats.freshLeads  || 0, color: "text-blue-700",    bg: "bg-blue-50",    border: "border-blue-200" },  // ✅ NAYA
+            { label: "Interested",     value: stats.interested  || 0, color: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-200" },
+            { label: "Not Interested", value: stats.notInterested || 0, color: "text-red-700",   bg: "bg-red-50",     border: "border-red-200" },
+
         ].map(s => (
           <div key={s.label} className={`${s.bg} border ${s.border} rounded-xl p-4`}>
             <p className="text-xs font-medium text-gray-500">{s.label}</p>
@@ -247,10 +272,19 @@ export default function BusinessLeads() {
               ) : leads.map(lead => (
                 <tr key={lead._id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{lead.customerName}</td>
-                  <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                  {/* <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
                     <a href={`tel:${lead.mobileNumber}`} className="flex items-center gap-1 text-indigo-600 hover:underline font-medium">
                       📞 {lead.mobileNumber}
                     </a>
+                  </td> */}
+                  <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                    <div className="flex items-center gap-2 group">
+                      <a href={`tel:${lead.mobileNumber}`}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-colors">
+                        📞 {lead.mobileNumber}
+                      </a>
+                      <DialButton phone={lead.mobileNumber} name={lead.customerName} />
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-gray-600 max-w-[120px] truncate">{lead.courseName || '—'}</td>
                   <td className="px-4 py-3 text-gray-500">{lead.leadSource || '—'}</td>
@@ -315,6 +349,17 @@ export default function BusinessLeads() {
               ))}
 
               <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Assign To (Optional)</label>
+                <select value={form.assignedTo || ""} onChange={e => setForm(p => ({ ...p, assignedTo: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg ...">
+                  <option value="">-- Unassigned --</option>
+                  {salespersons.map(sp => (
+                    <option key={sp._id} value={sp._id}>{sp.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Status</label>
                 <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value }))}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300">
@@ -333,7 +378,7 @@ export default function BusinessLeads() {
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Follow-up Date</label>
                 <input type="date" value={form.followUpDate} onChange={e => setForm(p => ({ ...p, followUpDate: e.target.value }))}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300" />
-              </div>
+              </div> */}
 
               <div className="flex gap-3 pt-2">
                 <button onClick={() => { setShowAdd(false); setEditLead(null); }}

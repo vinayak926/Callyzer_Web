@@ -192,6 +192,7 @@ const MENUS = {
         { path: '/business/live-feed',  label: 'Live Feed',   icon: '🔴' },
         { path: '/business/team',       label: 'My Team',     icon: '👥' },
         { path: '/business/leads',        label: 'Leads',        icon: '🎯' },
+        { path: '/business/worked-leads', label: 'Salesperson Activity', icon: '👥'},
         { path: '/business/call-logs',  label: 'Call Logs',   icon: '📞' },
         { path: '/business/sync',       label: 'Sync Calls',  icon: '📲' },
         { path: '/business/reports',    label: 'Reports',     icon: '📊' },

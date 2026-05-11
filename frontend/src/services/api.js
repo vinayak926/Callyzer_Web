@@ -425,6 +425,23 @@ export const api = {
     const res = await fetch(`${API_BASE_URL}/leads/stats`, { headers: authHeaders() });
     return res.json();
     },
+    
+    getWorkedLeads: async (params = {}) => {
+        const query = new URLSearchParams();
+        if (params.salespersonId) query.set("salespersonId", params.salespersonId);
+        if (params.status)        query.set("status",        params.status);
+        if (params.fromDate)      query.set("fromDate",      params.fromDate);
+        if (params.toDate)        query.set("toDate",        params.toDate);
+        if (params.page)          query.set("page",          params.page);
+        if (params.limit)         query.set("limit",         params.limit);
+        
+        const res = await fetch(`${API_BASE_URL}/leads/worked?${query}`, {
+            headers: authHeaders(),
+        });
+        if (!res.ok) throw new Error("Failed to fetch worked leads");
+        return res.json();
+    },
+
 };
 
 export default api;
