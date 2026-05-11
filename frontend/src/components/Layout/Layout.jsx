@@ -239,7 +239,7 @@ export default function Layout() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     return (
-        <div className="flex h-screen bg-[#F8FAFC] overflow-hidden">
+        <div className="flex h-screen overflow-hidden" style={{ background: '#F8FAFC' }}>
             {/* Sidebar */}
             <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
