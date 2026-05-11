@@ -431,303 +431,623 @@
 // }
 
 
-import React, { useState, useEffect, useContext } from 'react';
+// import React, { useState, useEffect, useContext } from 'react';
+// import { AuthContext } from '../context/AuthContext';
+// import { api } from '../services/api';
+// import {
+//     BarChart2, TrendingUp, Clock, Phone, PhoneOff, Calendar,
+//     Download, RefreshCcw, Filter,
+// } from 'lucide-react';
+// import {
+//     Card, StatCard, Select, Button, LoadingPage, ProgressBar, SectionHeader, Badge,
+// } from '../components/UI';
+
+// const fmtDuration = (s) => {
+//     if (!s) return '0s';
+//     const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+//     if (h > 0) return `${h}h ${m}m`;
+//     return `${m}m`;
+// };
+
+// const fmtDate = (d) => d
+//     ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
+//     : '';
+
+// const PERIOD_OPTIONS = [
+//     { value: 'today', label: 'Today' },
+//     { value: 'week', label: 'This Week' },
+//     { value: 'month', label: 'This Month' },
+//     { value: 'custom', label: 'Custom Range' },
+// ];
+
+// export default function Reports() {
+//     const { user } = useContext(AuthContext);
+//     const [period, setPeriod] = useState('week');
+//     const [dateFrom, setDateFrom] = useState('');
+//     const [dateTo, setDateTo] = useState('');
+//     const [loading, setLoading] = useState(true);
+//     const [stats, setStats] = useState(null);
+//     const [dailyData, setDailyData] = useState([]);
+//     const [agentStats, setAgentStats] = useState([]);
+
+//     const isAdmin = user?.role === 'super_admin';
+//     const isBusiness = user?.role === 'business_user';
+
+//     const getPeriodDates = (p) => {
+//         const today = new Date();
+//         const fmt = (d) => d.toISOString().split('T')[0];
+//         if (p === 'today') return { from: fmt(today), to: fmt(today) };
+//         if (p === 'week') {
+//             const mon = new Date(today);
+//             mon.setDate(today.getDate() - today.getDay() + 1);
+//             return { from: fmt(mon), to: fmt(today) };
+//         }
+//         if (p === 'month') {
+//             const start = new Date(today.getFullYear(), today.getMonth(), 1);
+//             return { from: fmt(start), to: fmt(today) };
+//         }
+//         return null;
+//     };
+
+//     const fetchReports = async () => {
+//         setLoading(true);
+//         try {
+//             let from = dateFrom, to = dateTo;
+//             if (period !== 'custom') {
+//                 const d = getPeriodDates(period);
+//                 if (d) { from = d.from; to = d.to; }
+//             }
+//             const params = { dateFrom: from, dateTo: to };
+//             const [statsRes, dailyRes] = await Promise.allSettled([
+//                 api.getCallStats(params),
+//                 api.getDailyStats(params),
+//             ]);
+//             if (statsRes.status === 'fulfilled') setStats(statsRes.value);
+//             if (dailyRes.status === 'fulfilled') setDailyData(dailyRes.value?.daily || dailyRes.value?.data || []);
+
+//             if (isAdmin || isBusiness) {
+//                 const agentRes = await api.getAgentStats?.(params).catch(() => null);
+//                 if (agentRes) setAgentStats(agentRes?.agents || agentRes?.data || []);
+//             }
+//         } catch (e) { console.log(e); }
+//         setLoading(false);
+//     };
+
+//     useEffect(() => { if (period !== 'custom') fetchReports(); }, [period]);
+//     useEffect(() => { if (period === 'custom' && dateFrom && dateTo) fetchReports(); }, [dateFrom, dateTo]);
+
+//     const totalCalls = stats?.totalCalls || 0;
+//     const connected = stats?.connected || stats?.connectedCalls || 0;
+//     const missed = stats?.missed || stats?.missedCalls || 0;
+//     const avgDuration = stats?.avgDuration || 0;
+//     const connectRate = totalCalls > 0 ? Math.round((connected / totalCalls) * 100) : 0;
+
+//     // Calculate bar chart max for normalization
+//     const maxDailyCalls = Math.max(...dailyData.map(d => d.totalCalls || 0), 1);
+
+//     return (
+//         <div className="space-y-5">
+//             {/* Header */}
+//             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+//                 <div>
+//                     <h2 className="text-xl font-bold text-slate-900">Reports & Analytics</h2>
+//                     <p className="text-sm text-slate-400 mt-0.5">Performance insights for your team</p>
+//                 </div>
+//                 <div className="flex items-center gap-2">
+//                     <Button variant="secondary" size="sm" icon={Download} onClick={() => api.exportReport?.({ period })}>
+//                         Export
+//                     </Button>
+//                     <Button variant="secondary" size="sm" icon={RefreshCcw} onClick={fetchReports}>
+//                         Refresh
+//                     </Button>
+//                 </div>
+//             </div>
+
+//             {/* Period Selector */}
+//             <Card>
+//                 <div className="flex items-center gap-2 mb-3">
+//                     <Filter size={15} className="text-slate-400" />
+//                     <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Date Range</span>
+//                 </div>
+//                 <div className="flex flex-wrap gap-2 mb-3">
+//                     {PERIOD_OPTIONS.map(opt => (
+//                         <button
+//                             key={opt.value}
+//                             onClick={() => setPeriod(opt.value)}
+//                             className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${period === opt.value
+//                                     ? 'bg-blue-600 text-white shadow-sm'
+//                                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+//                                 }`}
+//                         >
+//                             {opt.label}
+//                         </button>
+//                     ))}
+//                 </div>
+//                 {period === 'custom' && (
+//                     <div className="grid sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+//                         <div>
+//                             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">From</label>
+//                             <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="input-field" />
+//                         </div>
+//                         <div>
+//                             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">To</label>
+//                             <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="input-field" />
+//                         </div>
+//                     </div>
+//                 )}
+//             </Card>
+
+//             {loading ? (
+//                 <LoadingPage />
+//             ) : (
+//                 <>
+//                     {/* KPI Stats */}
+//                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+//                         <StatCard label="Total Calls" value={totalCalls} icon={Phone} color="#3B82F6" bgColor="#EFF6FF" />
+//                         <StatCard label="Connected" value={connected} icon={TrendingUp} color="#10B981" bgColor="#ECFDF5" />
+//                         <StatCard label="Missed" value={missed} icon={PhoneOff} color="#F43F5E" bgColor="#FFF1F2" />
+//                         <StatCard label="Avg Duration" value={fmtDuration(avgDuration)} icon={Clock} color="#8B5CF6" bgColor="#F5F3FF" />
+//                     </div>
+
+//                     {/* Connection Rate Card */}
+//                     <div className="grid lg:grid-cols-3 gap-4">
+//                         <Card className="lg:col-span-1">
+//                             <div className="flex items-center gap-2 mb-4">
+//                                 <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center">
+//                                     <TrendingUp size={18} className="text-emerald-600" />
+//                                 </div>
+//                                 <p className="font-bold text-slate-800">Connection Rate</p>
+//                             </div>
+//                             {/* Donut-style visual */}
+//                             <div className="flex items-center justify-center mb-4">
+//                                 <div className="relative w-32 h-32">
+//                                     <svg viewBox="0 0 36 36" className="w-32 h-32 -rotate-90">
+//                                         <circle cx="18" cy="18" r="15.9" fill="none" stroke="#F1F5F9" strokeWidth="3.8" />
+//                                         <circle
+//                                             cx="18" cy="18" r="15.9" fill="none"
+//                                             stroke={connectRate >= 50 ? '#10B981' : '#F43F5E'}
+//                                             strokeWidth="3.8"
+//                                             strokeDasharray={`${connectRate} ${100 - connectRate}`}
+//                                             strokeLinecap="round"
+//                                         />
+//                                     </svg>
+//                                     <div className="absolute inset-0 flex flex-col items-center justify-center">
+//                                         <p className="text-2xl font-bold text-slate-900">{connectRate}%</p>
+//                                         <p className="text-[10px] text-slate-400">Connected</p>
+//                                     </div>
+//                                 </div>
+//                             </div>
+//                             <div className="space-y-2">
+//                                 <div className="flex items-center justify-between text-sm">
+//                                     <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500" /><span className="text-slate-600">Connected</span></div>
+//                                     <span className="font-semibold">{connected}</span>
+//                                 </div>
+//                                 <div className="flex items-center justify-between text-sm">
+//                                     <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-rose-400" /><span className="text-slate-600">Missed</span></div>
+//                                     <span className="font-semibold">{missed}</span>
+//                                 </div>
+//                                 <div className="flex items-center justify-between text-sm">
+//                                     <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-slate-200" /><span className="text-slate-600">Other</span></div>
+//                                     <span className="font-semibold">{totalCalls - connected - missed}</span>
+//                                 </div>
+//                             </div>
+//                         </Card>
+
+//                         {/* Daily Trend Bar Chart */}
+//                         <Card className="lg:col-span-2" padding={false}>
+//                             <div className="p-5 border-b border-slate-50">
+//                                 <div className="flex items-center gap-2">
+//                                     <BarChart2 size={16} className="text-blue-500" />
+//                                     <p className="font-bold text-slate-800 text-sm">Daily Call Volume</p>
+//                                 </div>
+//                             </div>
+//                             {dailyData.length === 0 ? (
+//                                 <div className="flex items-center justify-center h-40 text-sm text-slate-400">No daily data available</div>
+//                             ) : (
+//                                 <div className="p-5">
+//                                     <div className="flex items-end gap-1.5 h-40">
+//                                         {dailyData.slice(-14).map((day, i) => {
+//                                             const height = Math.max(4, Math.round((day.totalCalls / maxDailyCalls) * 100));
+//                                             const connH = day.totalCalls > 0
+//                                                 ? Math.round(((day.connectedCalls || 0) / day.totalCalls) * height) : 0;
+//                                             return (
+//                                                 <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
+//                                                     <div className="w-full flex flex-col justify-end" style={{ height: '100%' }}>
+//                                                         <div className="w-full rounded-sm overflow-hidden" style={{ height: `${height}%` }}>
+//                                                             <div className="w-full h-full flex flex-col justify-end">
+//                                                                 <div className="w-full rounded-sm bg-blue-200 relative" style={{ height: `${height}%` }}>
+//                                                                     <div className="absolute bottom-0 left-0 right-0 bg-blue-500 rounded-sm transition-all" style={{ height: `${connH}%` }} />
+//                                                                 </div>
+//                                                             </div>
+//                                                         </div>
+//                                                     </div>
+//                                                     {/* Tooltip */}
+//                                                     <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-medium px-2 py-1 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+//                                                         {fmtDate(day.date)}: {day.totalCalls} calls
+//                                                     </div>
+//                                                     <p className="text-[9px] text-slate-400 truncate w-full text-center">
+//                                                         {fmtDate(day.date)?.split(' ')[0]}
+//                                                     </p>
+//                                                 </div>
+//                                             );
+//                                         })}
+//                                     </div>
+//                                     <div className="flex items-center gap-4 mt-3 pt-3 border-t border-slate-100">
+//                                         <div className="flex items-center gap-1.5 text-xs text-slate-500">
+//                                             <div className="w-3 h-3 rounded-sm bg-blue-500" /> Connected
+//                                         </div>
+//                                         <div className="flex items-center gap-1.5 text-xs text-slate-500">
+//                                             <div className="w-3 h-3 rounded-sm bg-blue-200" /> Others
+//                                         </div>
+//                                     </div>
+//                                 </div>
+//                             )}
+//                         </Card>
+//                     </div>
+
+//                     {/* Agent Breakdown (Admin/Business only) */}
+//                     {(isAdmin || isBusiness) && agentStats.length > 0 && (
+//                         <Card padding={false}>
+//                             <div className="p-5 border-b border-slate-50">
+//                                 <SectionHeader title="Agent Breakdown" />
+//                             </div>
+//                             <div className="overflow-x-auto">
+//                                 <table className="w-full">
+//                                     <thead>
+//                                         <tr className="border-b border-slate-100 bg-slate-50/60">
+//                                             <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Agent</th>
+//                                             <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Total</th>
+//                                             <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Connected</th>
+//                                             <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide hidden sm:table-cell">Rate</th>
+//                                             <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide hidden md:table-cell">Avg Duration</th>
+//                                         </tr>
+//                                     </thead>
+//                                     <tbody className="divide-y divide-slate-50">
+//                                         {agentStats.map((ag, i) => {
+//                                             const rate = ag.totalCalls > 0
+//                                                 ? Math.round(((ag.connectedCalls || 0) / ag.totalCalls) * 100) : 0;
+//                                             return (
+//                                                 <tr key={ag._id || i} className="hover:bg-slate-50/50 transition-colors">
+//                                                     <td className="px-5 py-3.5">
+//                                                         <div className="flex items-center gap-2.5">
+//                                                             <span className="text-xs text-slate-300 font-bold w-5">#{i + 1}</span>
+//                                                             <p className="text-sm font-semibold text-slate-800">{ag.name}</p>
+//                                                         </div>
+//                                                     </td>
+//                                                     <td className="px-5 py-3.5 text-sm font-bold text-blue-600">{ag.totalCalls}</td>
+//                                                     <td className="px-5 py-3.5 text-sm font-bold text-emerald-600">{ag.connectedCalls || 0}</td>
+//                                                     <td className="px-5 py-3.5 hidden sm:table-cell">
+//                                                         <div className="flex items-center gap-2">
+//                                                             <ProgressBar value={rate} max={100} color={rate >= 50 ? '#10B981' : '#F43F5E'} height={4} />
+//                                                             <span className="text-xs font-semibold text-slate-500 w-10 shrink-0">{rate}%</span>
+//                                                         </div>
+//                                                     </td>
+//                                                     <td className="px-5 py-3.5 text-sm text-slate-500 hidden md:table-cell">
+//                                                         {fmtDuration(ag.avgDuration)}
+//                                                     </td>
+//                                                 </tr>
+//                                             );
+//                                         })}
+//                                     </tbody>
+//                                 </table>
+//                             </div>
+//                         </Card>
+//                     )}
+//                 </>
+//             )}
+//         </div>
+//     );
+// }
+
+// src/pages/Reports.jsx
+// Role-based report page:
+//   salesperson  → sees only own call logs (GET /api/reports/my-calllogs)
+//   business_user → redirected to /business/salesperson-reports
+//   super_admin   → existing generic reports view (unchanged)
+
+import React, { useState, useEffect, useContext, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { api } from '../services/api';
 import {
-    BarChart2, TrendingUp, Clock, Phone, PhoneOff, Calendar,
-    Download, RefreshCcw, Filter,
+    Phone, PhoneOff, PhoneCall, Clock, TrendingUp,
+    Calendar, Download, RefreshCcw, Filter, FileText,
+    CheckCircle, XCircle,
 } from 'lucide-react';
-import {
-    Card, StatCard, Select, Button, LoadingPage, ProgressBar, SectionHeader, Badge,
-} from '../components/UI';
+import { Card, StatCard, Button, LoadingPage, Badge } from '../components/UI';
 
-const fmtDuration = (s) => {
-    if (!s) return '0s';
-    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+// ── Helpers ────────────────────────────────────────────────
+const today = () => new Date().toISOString().split('T')[0];
+
+const fmtDuration = (sec) => {
+    if (!sec || sec === 0) return '0s';
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = Math.round(sec % 60);
     if (h > 0) return `${h}h ${m}m`;
-    return `${m}m`;
+    if (m > 0) return `${m}m ${s}s`;
+    return `${s}s`;
 };
 
-const fmtDate = (d) => d
-    ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
-    : '';
+const fmtDateTime = (d) =>
+    d ? new Date(d).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
 
-const PERIOD_OPTIONS = [
-    { value: 'today', label: 'Today' },
-    { value: 'week', label: 'This Week' },
-    { value: 'month', label: 'This Month' },
-    { value: 'custom', label: 'Custom Range' },
-];
+const statusColor = (s) => {
+    if (s === 'Connected') return 'green';
+    if (s === 'Missed')    return 'red';
+    return 'yellow';
+};
 
-export default function Reports() {
-    const { user } = useContext(AuthContext);
-    const [period, setPeriod] = useState('week');
-    const [dateFrom, setDateFrom] = useState('');
-    const [dateTo, setDateTo] = useState('');
-    const [loading, setLoading] = useState(true);
-    const [stats, setStats] = useState(null);
-    const [dailyData, setDailyData] = useState([]);
-    const [agentStats, setAgentStats] = useState([]);
-
-    const isAdmin = user?.role === 'super_admin';
-    const isBusiness = user?.role === 'business_user';
-
-    const getPeriodDates = (p) => {
-        const today = new Date();
-        const fmt = (d) => d.toISOString().split('T')[0];
-        if (p === 'today') return { from: fmt(today), to: fmt(today) };
-        if (p === 'week') {
-            const mon = new Date(today);
-            mon.setDate(today.getDate() - today.getDay() + 1);
-            return { from: fmt(mon), to: fmt(today) };
-        }
-        if (p === 'month') {
-            const start = new Date(today.getFullYear(), today.getMonth(), 1);
-            return { from: fmt(start), to: fmt(today) };
-        }
-        return null;
+// ── Status Badge ───────────────────────────────────────────
+function StatusBadge({ status }) {
+    const colors = {
+        Connected: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+        Missed:    'bg-rose-50 text-rose-700 border border-rose-200',
+        Rejected:  'bg-amber-50 text-amber-700 border border-amber-200',
     };
+    return (
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${colors[status] || colors.Rejected}`}>
+            {status}
+        </span>
+    );
+}
 
-    const fetchReports = async () => {
+// ── CSV Export ─────────────────────────────────────────────
+function downloadCSV(calls, salespersonName = 'My') {
+    if (!calls.length) return;
+    const headers = ['Date & Time', 'Customer Name', 'Phone', 'Type', 'Status', 'Duration', 'Disposition', 'Notes'];
+    const rows = calls.map(c => [
+        fmtDateTime(c.calledAt),
+        c.customerName || '—',
+        c.customerNumber || '—',
+        c.callType || '—',
+        c.callStatus || '—',
+        fmtDuration(c.durationSeconds),
+        c.disposition || '—',
+        (c.notes || '').replace(/,/g, ';'),
+    ]);
+    const csv  = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `${salespersonName}-call-report-${today()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// ══════════════════════════════════════════════════════════
+//  SALESPERSON REPORT PAGE
+// ══════════════════════════════════════════════════════════
+function SalespersonReport({ user }) {
+    const [fromDate, setFromDate] = useState(today());
+    const [toDate,   setToDate]   = useState(today());
+    const [loading,  setLoading]  = useState(true);
+    const [data,     setData]     = useState(null);
+    const [error,    setError]    = useState('');
+
+    const fetchReport = useCallback(async () => {
         setLoading(true);
+        setError('');
         try {
-            let from = dateFrom, to = dateTo;
-            if (period !== 'custom') {
-                const d = getPeriodDates(period);
-                if (d) { from = d.from; to = d.to; }
+            const res = await api.getMyCallLogReport({ fromDate, toDate });
+            if (res?.summary) {
+                setData(res);
+            } else {
+                setError(res?.message || 'Failed to load report.');
             }
-            const params = { dateFrom: from, dateTo: to };
-            const [statsRes, dailyRes] = await Promise.allSettled([
-                api.getCallStats(params),
-                api.getDailyStats(params),
-            ]);
-            if (statsRes.status === 'fulfilled') setStats(statsRes.value);
-            if (dailyRes.status === 'fulfilled') setDailyData(dailyRes.value?.daily || dailyRes.value?.data || []);
-
-            if (isAdmin || isBusiness) {
-                const agentRes = await api.getAgentStats?.(params).catch(() => null);
-                if (agentRes) setAgentStats(agentRes?.agents || agentRes?.data || []);
-            }
-        } catch (e) { console.log(e); }
+        } catch {
+            setError('Cannot connect to server. Please try again.');
+        }
         setLoading(false);
-    };
+    }, [fromDate, toDate]);
 
-    useEffect(() => { if (period !== 'custom') fetchReports(); }, [period]);
-    useEffect(() => { if (period === 'custom' && dateFrom && dateTo) fetchReports(); }, [dateFrom, dateTo]);
+    useEffect(() => { fetchReport(); }, [fetchReport]);
 
-    const totalCalls = stats?.totalCalls || 0;
-    const connected = stats?.connected || stats?.connectedCalls || 0;
-    const missed = stats?.missed || stats?.missedCalls || 0;
-    const avgDuration = stats?.avgDuration || 0;
-    const connectRate = totalCalls > 0 ? Math.round((connected / totalCalls) * 100) : 0;
-
-    // Calculate bar chart max for normalization
-    const maxDailyCalls = Math.max(...dailyData.map(d => d.totalCalls || 0), 1);
+    const summary = data?.summary || {};
+    const calls   = data?.calls   || [];
 
     return (
         <div className="space-y-5">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                    <h2 className="text-xl font-bold text-slate-900">Reports & Analytics</h2>
-                    <p className="text-sm text-slate-400 mt-0.5">Performance insights for your team</p>
+                    <h2 className="text-xl font-bold text-slate-900">My Call Report</h2>
+                    <p className="text-sm text-slate-400 mt-0.5">Your personal call performance</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant="secondary" size="sm" icon={Download} onClick={() => api.exportReport?.({ period })}>
-                        Export
+                    <Button
+                        variant="secondary" size="sm" icon={Download}
+                        onClick={() => downloadCSV(calls, user?.name || 'My')}
+                        disabled={!calls.length}
+                    >
+                        Download CSV
                     </Button>
-                    <Button variant="secondary" size="sm" icon={RefreshCcw} onClick={fetchReports}>
+                    <Button variant="secondary" size="sm" icon={RefreshCcw} onClick={fetchReport}>
                         Refresh
                     </Button>
                 </div>
             </div>
 
-            {/* Period Selector */}
+            {/* Date Filter */}
             <Card>
                 <div className="flex items-center gap-2 mb-3">
                     <Filter size={15} className="text-slate-400" />
                     <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Date Range</span>
+                    <span className="ml-auto text-xs text-slate-400">(Default: Today)</span>
                 </div>
-                <div className="flex flex-wrap gap-2 mb-3">
-                    {PERIOD_OPTIONS.map(opt => (
-                        <button
-                            key={opt.value}
-                            onClick={() => setPeriod(opt.value)}
-                            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${period === opt.value
-                                    ? 'bg-blue-600 text-white shadow-sm'
-                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                                }`}
-                        >
-                            {opt.label}
-                        </button>
-                    ))}
-                </div>
-                {period === 'custom' && (
-                    <div className="grid sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100">
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">From</label>
-                            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="input-field" />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">To</label>
-                            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="input-field" />
-                        </div>
+                <div className="grid sm:grid-cols-2 gap-3">
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">From</label>
+                        <input
+                            type="date" value={fromDate} max={toDate}
+                            onChange={e => setFromDate(e.target.value)}
+                            className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
                     </div>
-                )}
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">To</label>
+                        <input
+                            type="date" value={toDate} min={fromDate}
+                            onChange={e => setToDate(e.target.value)}
+                            className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                    </div>
+                </div>
             </Card>
+
+            {/* Error */}
+            {error && (
+                <div className="bg-rose-50 border border-rose-200 rounded-2xl px-5 py-4 flex items-center justify-between">
+                    <p className="text-rose-700 text-sm font-medium">⚠️ {error}</p>
+                    <button onClick={fetchReport} className="text-rose-600 font-semibold text-sm ml-4 hover:underline">Retry →</button>
+                </div>
+            )}
 
             {loading ? (
                 <LoadingPage />
             ) : (
                 <>
-                    {/* KPI Stats */}
+                    {/* Summary Stats */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                        <StatCard label="Total Calls" value={totalCalls} icon={Phone} color="#3B82F6" bgColor="#EFF6FF" />
-                        <StatCard label="Connected" value={connected} icon={TrendingUp} color="#10B981" bgColor="#ECFDF5" />
-                        <StatCard label="Missed" value={missed} icon={PhoneOff} color="#F43F5E" bgColor="#FFF1F2" />
-                        <StatCard label="Avg Duration" value={fmtDuration(avgDuration)} icon={Clock} color="#8B5CF6" bgColor="#F5F3FF" />
+                        <StatCard
+                            label="Total Calls" value={summary.total ?? 0}
+                            icon={Phone} color="#3B82F6" bgColor="#EFF6FF"
+                        />
+                        <StatCard
+                            label="Connected" value={summary.connected ?? 0}
+                            icon={CheckCircle} color="#10B981" bgColor="#ECFDF5"
+                        />
+                        <StatCard
+                            label="Not Connected" value={summary.notConnected ?? 0}
+                            icon={XCircle} color="#F43F5E" bgColor="#FFF1F2"
+                        />
+                        <StatCard
+                            label="Total Duration" value={summary.totalDuration || '0s'}
+                            icon={Clock} color="#8B5CF6" bgColor="#F5F3FF"
+                        />
                     </div>
 
-                    {/* Connection Rate Card */}
+                    {/* Connection Rate + Avg Duration */}
                     <div className="grid lg:grid-cols-3 gap-4">
-                        <Card className="lg:col-span-1">
+                        <Card>
                             <div className="flex items-center gap-2 mb-4">
                                 <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center">
                                     <TrendingUp size={18} className="text-emerald-600" />
                                 </div>
                                 <p className="font-bold text-slate-800">Connection Rate</p>
                             </div>
-                            {/* Donut-style visual */}
                             <div className="flex items-center justify-center mb-4">
-                                <div className="relative w-32 h-32">
-                                    <svg viewBox="0 0 36 36" className="w-32 h-32 -rotate-90">
-                                        <circle cx="18" cy="18" r="15.9" fill="none" stroke="#F1F5F9" strokeWidth="3.8" />
+                                <div className="relative w-28 h-28">
+                                    <svg viewBox="0 0 36 36" className="w-28 h-28 -rotate-90">
+                                        <circle cx="18" cy="18" r="15.9" fill="none" stroke="#F1F5F9" strokeWidth="4" />
                                         <circle
                                             cx="18" cy="18" r="15.9" fill="none"
-                                            stroke={connectRate >= 50 ? '#10B981' : '#F43F5E'}
-                                            strokeWidth="3.8"
-                                            strokeDasharray={`${connectRate} ${100 - connectRate}`}
+                                            stroke={summary.connectRate >= 50 ? '#10B981' : '#F43F5E'}
+                                            strokeWidth="4"
+                                            strokeDasharray={`${summary.connectRate ?? 0} ${100 - (summary.connectRate ?? 0)}`}
                                             strokeLinecap="round"
                                         />
                                     </svg>
                                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                        <p className="text-2xl font-bold text-slate-900">{connectRate}%</p>
-                                        <p className="text-[10px] text-slate-400">Connected</p>
+                                        <p className="text-2xl font-bold text-slate-900">{summary.connectRate ?? 0}%</p>
+                                        <p className="text-[10px] text-slate-400">Rate</p>
                                     </div>
                                 </div>
                             </div>
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between text-sm">
-                                    <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500" /><span className="text-slate-600">Connected</span></div>
-                                    <span className="font-semibold">{connected}</span>
-                                </div>
-                                <div className="flex items-center justify-between text-sm">
-                                    <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-rose-400" /><span className="text-slate-600">Missed</span></div>
-                                    <span className="font-semibold">{missed}</span>
-                                </div>
-                                <div className="flex items-center justify-between text-sm">
-                                    <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-slate-200" /><span className="text-slate-600">Other</span></div>
-                                    <span className="font-semibold">{totalCalls - connected - missed}</span>
-                                </div>
+                            <div className="space-y-1.5 text-sm">
+                                <div className="flex justify-between"><span className="text-slate-500">Connected</span><span className="font-semibold text-emerald-600">{summary.connected ?? 0}</span></div>
+                                <div className="flex justify-between"><span className="text-slate-500">Missed</span><span className="font-semibold text-rose-600">{summary.missed ?? 0}</span></div>
+                                <div className="flex justify-between"><span className="text-slate-500">Rejected</span><span className="font-semibold text-amber-600">{summary.rejected ?? 0}</span></div>
                             </div>
                         </Card>
 
-                        {/* Daily Trend Bar Chart */}
-                        <Card className="lg:col-span-2" padding={false}>
-                            <div className="p-5 border-b border-slate-50">
-                                <div className="flex items-center gap-2">
-                                    <BarChart2 size={16} className="text-blue-500" />
-                                    <p className="font-bold text-slate-800 text-sm">Daily Call Volume</p>
+                        <Card className="lg:col-span-2">
+                            <p className="font-bold text-slate-800 mb-4">Duration Summary</p>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-purple-50 rounded-xl p-4 text-center">
+                                    <p className="text-2xl font-bold text-purple-700">{summary.totalDuration || '0s'}</p>
+                                    <p className="text-xs text-purple-500 mt-1 font-medium">Total Talk Time</p>
+                                </div>
+                                <div className="bg-blue-50 rounded-xl p-4 text-center">
+                                    <p className="text-2xl font-bold text-blue-700">{summary.avgDuration || '0s'}</p>
+                                    <p className="text-xs text-blue-500 mt-1 font-medium">Avg per Call</p>
                                 </div>
                             </div>
-                            {dailyData.length === 0 ? (
-                                <div className="flex items-center justify-center h-40 text-sm text-slate-400">No daily data available</div>
-                            ) : (
-                                <div className="p-5">
-                                    <div className="flex items-end gap-1.5 h-40">
-                                        {dailyData.slice(-14).map((day, i) => {
-                                            const height = Math.max(4, Math.round((day.totalCalls / maxDailyCalls) * 100));
-                                            const connH = day.totalCalls > 0
-                                                ? Math.round(((day.connectedCalls || 0) / day.totalCalls) * height) : 0;
-                                            return (
-                                                <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
-                                                    <div className="w-full flex flex-col justify-end" style={{ height: '100%' }}>
-                                                        <div className="w-full rounded-sm overflow-hidden" style={{ height: `${height}%` }}>
-                                                            <div className="w-full h-full flex flex-col justify-end">
-                                                                <div className="w-full rounded-sm bg-blue-200 relative" style={{ height: `${height}%` }}>
-                                                                    <div className="absolute bottom-0 left-0 right-0 bg-blue-500 rounded-sm transition-all" style={{ height: `${connH}%` }} />
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    {/* Tooltip */}
-                                                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-medium px-2 py-1 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                                                        {fmtDate(day.date)}: {day.totalCalls} calls
-                                                    </div>
-                                                    <p className="text-[9px] text-slate-400 truncate w-full text-center">
-                                                        {fmtDate(day.date)?.split(' ')[0]}
-                                                    </p>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                    <div className="flex items-center gap-4 mt-3 pt-3 border-t border-slate-100">
-                                        <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                                            <div className="w-3 h-3 rounded-sm bg-blue-500" /> Connected
-                                        </div>
-                                        <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                                            <div className="w-3 h-3 rounded-sm bg-blue-200" /> Others
-                                        </div>
-                                    </div>
+                            <div className="mt-4 pt-4 border-t border-slate-100 text-sm text-slate-500 space-y-1">
+                                <div className="flex justify-between">
+                                    <span>Date range</span>
+                                    <span className="font-medium text-slate-700">{fromDate} → {toDate}</span>
                                 </div>
-                            )}
+                                <div className="flex justify-between">
+                                    <span>Salesperson</span>
+                                    <span className="font-medium text-slate-700">{user?.name}</span>
+                                </div>
+                            </div>
                         </Card>
                     </div>
 
-                    {/* Agent Breakdown (Admin/Business only) */}
-                    {(isAdmin || isBusiness) && agentStats.length > 0 && (
+                    {/* Call List Table */}
+                    {calls.length === 0 ? (
+                        <Card>
+                            <div className="text-center py-12">
+                                <div className="text-5xl mb-4">📊</div>
+                                <p className="text-lg font-bold text-slate-800">No Calls Found</p>
+                                <p className="text-sm text-slate-400 mt-1">No call logs for the selected date range.</p>
+                            </div>
+                        </Card>
+                    ) : (
                         <Card padding={false}>
-                            <div className="p-5 border-b border-slate-50">
-                                <SectionHeader title="Agent Breakdown" />
+                            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <FileText size={16} className="text-blue-500" />
+                                    <p className="font-bold text-slate-800 text-sm">Call List ({calls.length})</p>
+                                </div>
+                                <Button
+                                    variant="outline" size="sm" icon={Download}
+                                    onClick={() => downloadCSV(calls, user?.name || 'My')}
+                                >
+                                    Export CSV
+                                </Button>
                             </div>
                             <div className="overflow-x-auto">
-                                <table className="w-full">
+                                <table className="w-full text-sm">
                                     <thead>
                                         <tr className="border-b border-slate-100 bg-slate-50/60">
-                                            <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Agent</th>
-                                            <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Total</th>
-                                            <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Connected</th>
-                                            <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide hidden sm:table-cell">Rate</th>
-                                            <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide hidden md:table-cell">Avg Duration</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Date & Time</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Customer</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Type</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Duration</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide hidden md:table-cell">Disposition</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-50">
-                                        {agentStats.map((ag, i) => {
-                                            const rate = ag.totalCalls > 0
-                                                ? Math.round(((ag.connectedCalls || 0) / ag.totalCalls) * 100) : 0;
-                                            return (
-                                                <tr key={ag._id || i} className="hover:bg-slate-50/50 transition-colors">
-                                                    <td className="px-5 py-3.5">
-                                                        <div className="flex items-center gap-2.5">
-                                                            <span className="text-xs text-slate-300 font-bold w-5">#{i + 1}</span>
-                                                            <p className="text-sm font-semibold text-slate-800">{ag.name}</p>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-5 py-3.5 text-sm font-bold text-blue-600">{ag.totalCalls}</td>
-                                                    <td className="px-5 py-3.5 text-sm font-bold text-emerald-600">{ag.connectedCalls || 0}</td>
-                                                    <td className="px-5 py-3.5 hidden sm:table-cell">
-                                                        <div className="flex items-center gap-2">
-                                                            <ProgressBar value={rate} max={100} color={rate >= 50 ? '#10B981' : '#F43F5E'} height={4} />
-                                                            <span className="text-xs font-semibold text-slate-500 w-10 shrink-0">{rate}%</span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-5 py-3.5 text-sm text-slate-500 hidden md:table-cell">
-                                                        {fmtDuration(ag.avgDuration)}
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
+                                        {calls.map((call, i) => (
+                                            <tr key={call._id || i} className="hover:bg-slate-50/50 transition-colors">
+                                                <td className="px-4 py-3 text-slate-600 whitespace-nowrap text-xs">
+                                                    {fmtDateTime(call.calledAt)}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <p className="font-semibold text-slate-800 text-sm">{call.customerName || 'Unknown'}</p>
+                                                    <p className="text-xs text-slate-400">{call.customerNumber}</p>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span className={`text-xs font-semibold ${call.callType === 'Outgoing' ? 'text-blue-600' : 'text-violet-600'}`}>
+                                                        {call.callType === 'Outgoing' ? '↑ Outgoing' : '↓ Incoming'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <StatusBadge status={call.callStatus} />
+                                                </td>
+                                                <td className="px-4 py-3 text-slate-600 font-medium text-sm">
+                                                    {fmtDuration(call.durationSeconds)}
+                                                </td>
+                                                <td className="px-4 py-3 hidden md:table-cell text-slate-500 text-xs">
+                                                    {call.disposition || '—'}
+                                                </td>
+                                            </tr>
+                                        ))}
                                     </tbody>
                                 </table>
                             </div>
@@ -737,4 +1057,87 @@ export default function Reports() {
             )}
         </div>
     );
+}
+
+// ══════════════════════════════════════════════════════════
+//  SUPER ADMIN / GENERIC REPORT (existing view, kept intact)
+// ══════════════════════════════════════════════════════════
+function GenericReport() {
+    const [period, setPeriod] = useState('today');
+    const [loading, setLoading] = useState(true);
+    const [stats, setStats] = useState(null);
+
+    const PERIOD_OPTIONS = [
+        { value: 'today', label: 'Today' },
+        { value: 'week',  label: 'This Week' },
+        { value: 'month', label: 'This Month' },
+    ];
+
+    const fetchReports = useCallback(async () => {
+        setLoading(true);
+        try {
+            const res = await api.getReports(period);
+            setStats(res);
+        } catch { /* silent */ }
+        setLoading(false);
+    }, [period]);
+
+    useEffect(() => { fetchReports(); }, [fetchReports]);
+
+    const totalCalls = stats?.total ?? 0;
+    const connected  = stats?.connected ?? 0;
+    const missed     = stats?.missed    ?? 0;
+
+    return (
+        <div className="space-y-5">
+            <div>
+                <h2 className="text-xl font-bold text-slate-900">Reports & Analytics</h2>
+                <p className="text-sm text-slate-400 mt-0.5">System-wide performance insights</p>
+            </div>
+            <Card>
+                <div className="flex flex-wrap gap-2">
+                    {PERIOD_OPTIONS.map(opt => (
+                        <button
+                            key={opt.value}
+                            onClick={() => setPeriod(opt.value)}
+                            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${period === opt.value ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                        >
+                            {opt.label}
+                        </button>
+                    ))}
+                </div>
+            </Card>
+            {loading ? (
+                <LoadingPage />
+            ) : (
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <StatCard label="Total Calls" value={totalCalls} icon={Phone} color="#3B82F6" bgColor="#EFF6FF" />
+                    <StatCard label="Connected"   value={connected}  icon={CheckCircle} color="#10B981" bgColor="#ECFDF5" />
+                    <StatCard label="Missed"      value={missed}     icon={XCircle}    color="#F43F5E" bgColor="#FFF1F2" />
+                    <StatCard label="Connect Rate" value={`${stats?.connectRate ?? 0}%`} icon={TrendingUp} color="#8B5CF6" bgColor="#F5F3FF" />
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ══════════════════════════════════════════════════════════
+//  ROOT EXPORT — Role Router
+// ══════════════════════════════════════════════════════════
+export default function Reports() {
+    const { user } = useContext(AuthContext);
+    const navigate = useNavigate();
+
+    // Business user should use the dedicated Salesperson Reports page
+    useEffect(() => {
+        if (user?.role === 'business_user') {
+            navigate('/business/salesperson-reports', { replace: true });
+        }
+    }, [user, navigate]);
+
+    if (user?.role === 'salesperson')  return <SalespersonReport user={user} />;
+    if (user?.role === 'super_admin')  return <GenericReport />;
+
+    // business_user — redirecting (spinner while redirecting)
+    return <LoadingPage />;
 }

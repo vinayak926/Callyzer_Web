@@ -198,6 +198,19 @@ export const api = {
     },
 
     // ── REPORTS ───────────────────────────────────────────
+    // getReports: async (period = 'month') => {
+    //     const res = await fetch(`${API_BASE_URL}/reports/summary?period=${period}`, { headers: authHeaders() });
+    //     return res.json();
+    // },
+
+    // getHourlyReport: async (date, agentId) => {
+    //     const params = new URLSearchParams({ date: date || new Date().toISOString().split('T')[0] });
+    //     if (agentId) params.append('agentId', agentId);
+    //     const res = await fetch(`${API_BASE_URL}/calls/hourly?${params}`, { headers: authHeaders() });
+    //     return res.json();
+    // },
+
+    // ── REPORTS ───────────────────────────────────────────
     getReports: async (period = 'month') => {
         const res = await fetch(`${API_BASE_URL}/reports/summary?period=${period}`, { headers: authHeaders() });
         return res.json();
@@ -207,6 +220,30 @@ export const api = {
         const params = new URLSearchParams({ date: date || new Date().toISOString().split('T')[0] });
         if (agentId) params.append('agentId', agentId);
         const res = await fetch(`${API_BASE_URL}/calls/hourly?${params}`, { headers: authHeaders() });
+        return res.json();
+    },
+
+    // ── NEW: Salesperson — own call log report ─────────────
+    getMyCallLogReport: async ({ fromDate, toDate } = {}) => {
+        const params = new URLSearchParams();
+        if (fromDate) params.append('fromDate', fromDate);
+        if (toDate)   params.append('toDate',   toDate);
+        const res = await fetch(`${API_BASE_URL}/reports/my-calllogs?${params}`, { headers: authHeaders() });
+        return res.json();
+    },
+
+    // ── NEW: Business User — list of own salespersons ──────
+    getMySalespersons: async () => {
+        const res = await fetch(`${API_BASE_URL}/reports/my-salespersons`, { headers: authHeaders() });
+        return res.json();
+    },
+
+    // ── NEW: Business User — specific salesperson report ───
+    getSalespersonCallReport: async (salespersonId, { fromDate, toDate } = {}) => {
+        const params = new URLSearchParams();
+        if (fromDate) params.append('fromDate', fromDate);
+        if (toDate)   params.append('toDate',   toDate);
+        const res = await fetch(`${API_BASE_URL}/reports/salesperson/${salespersonId}?${params}`, { headers: authHeaders() });
         return res.json();
     },
 
@@ -425,7 +462,7 @@ export const api = {
     const res = await fetch(`${API_BASE_URL}/leads/stats`, { headers: authHeaders() });
     return res.json();
     },
-    
+
     getWorkedLeads: async (params = {}) => {
         const query = new URLSearchParams();
         if (params.salespersonId) query.set("salespersonId", params.salespersonId);

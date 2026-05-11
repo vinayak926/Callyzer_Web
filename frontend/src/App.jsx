@@ -33,6 +33,7 @@ import BusinessDashboard from './pages/business/BusinessDashboard';
 import MyTeam from './pages/business/MyTeam';
 import BusinessLeads from './pages/business/Leads';
 import WorkedLeads    from './pages/business/WorkedLeads'; 
+import SalespersonReports from './pages/business/SalespersonReports';  // ← NEW
 
 // Salesperson Pages
 import SalespersonDashboard from './pages/salesperson/SalespersonDashboard';
@@ -89,6 +90,7 @@ function AppRoutes() {
                         <Route path="/business/live-feed" element={<LiveFeed />} />
                         <Route path="/business/call-logs" element={<CallLogs />} />
                         <Route path="/business/reports" element={<Reports />} />
+                        <Route path="/business/salesperson-reports" element={<SalespersonReports />} /> 
                         <Route path="/business/leaderboard" element={<Leaderboard />} />
                         <Route path="/business/sync" element={<DeviceCallSync />} />
                         <Route path="/business/subscription" element={<Subscription />} />
