@@ -32,6 +32,65 @@ const EMPTY_FORM = {
   assignedTo: "",
 };
 
+// ✅ NAYA — yeh poora component add karo MyLeads.jsx mein (line ~17 ke baad, STATUS_STYLES ke neeche)
+
+function DialButton({ phone, name }) {
+  const [state, setState] = React.useState('idle');
+  const [msg,   setMsg  ] = React.useState('');
+
+  const handleDial = async (e) => {
+    e.stopPropagation();
+    if (state === 'dialing') return;
+    setState('dialing');
+    try {
+      window.postMessage({
+        type:  'CALLYZER_DIAL',
+        phone,
+        name:  name || 'Unknown',
+        token: localStorage.getItem('token'),
+      }, '*');
+      const res = await api.triggerDial(phone, name);
+      if (res.success) {
+        setState('sent');
+        setMsg(res.socketSent ? 'Sent to mobile' : 'Open mobile app');
+      } else {
+        setState('error');
+        setMsg(res.message || 'Failed');
+      }
+    } catch {
+      setState('error');
+      setMsg('Connection error');
+    }
+    setTimeout(() => { setState('idle'); setMsg(''); }, 3000);
+  };
+
+  const cfg = {
+    idle:    { cls: 'bg-green-50 hover:bg-green-100 text-green-600',  icon: '☎' },
+    dialing: { cls: 'bg-yellow-50 text-yellow-600',                   icon: '...' },
+    sent:    { cls: 'bg-blue-50 text-blue-600',                       icon: '✓' },
+    error:   { cls: 'bg-red-50 text-red-600',                         icon: '✕' },
+  }[state];
+
+  return (
+    <div className="relative inline-flex items-center">
+      <button onClick={handleDial}
+        title={`Call ${phone} on mobile app`}
+        className={`opacity-0 group-hover:opacity-100 transition-all duration-150
+          ${cfg.cls} w-7 h-7 rounded-lg flex items-center justify-center
+          text-xs border border-current border-opacity-20
+          ${state === 'dialing' ? 'cursor-wait' : 'cursor-pointer'}`}>
+        {cfg.icon}
+      </button>
+      {msg && (
+        <span className={`absolute left-10 top-0 whitespace-nowrap text-xs
+          font-semibold px-2 py-1 rounded-md shadow-sm z-10 ${cfg.cls}
+          border border-current border-opacity-20`}>
+          {msg}
+        </span>
+      )}
+    </div>
+  );
+}
 
 // ─────────────────────────────────────────────────────────────
 export default function BusinessLeads() {
