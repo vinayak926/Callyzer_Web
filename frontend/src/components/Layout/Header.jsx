@@ -9,6 +9,8 @@ const pageTitles = {
     '/admin/settings':         { title: 'Settings',                subtitle: 'System configuration' },
     '/business/dashboard':     { title: 'Business Dashboard',      subtitle: "Your team's performance overview" },
     '/business/my-team':       { title: 'My Team',                 subtitle: 'Manage your salespersons' },
+    '/business/leads':          { title: 'Leads Management',   subtitle: 'Manage and track all your sales leads' },
+    '/salesperson/leads':       { title: 'My Leads',           subtitle: 'View leads, call and add follow-ups' },
     '/salesperson/dashboard':  { title: 'My Dashboard',            subtitle: 'Your personal call overview' },
     '/call-logs':              { title: 'Call Logs',               subtitle: 'View all your call records' },
     '/reports':                { title: 'Reports & Analytics',     subtitle: 'Analyze your performance' },

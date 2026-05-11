@@ -191,6 +191,7 @@ const MENUS = {
         { path: '/business/dashboard',  label: 'Dashboard',   icon: '🏠' },
         { path: '/business/live-feed',  label: 'Live Feed',   icon: '🔴' },
         { path: '/business/team',       label: 'My Team',     icon: '👥' },
+        { path: '/business/leads',        label: 'Leads',        icon: '🎯' },
         { path: '/business/call-logs',  label: 'Call Logs',   icon: '📞' },
         { path: '/business/sync',       label: 'Sync Calls',  icon: '📲' },
         { path: '/business/reports',    label: 'Reports',     icon: '📊' },
@@ -199,6 +200,7 @@ const MENUS = {
     ],
     salesperson: [
         { path: '/salesperson/dashboard',  label: 'Dashboard',   icon: '🏠' },
+        { path: '/salesperson/leads',       label: 'My Leads',    icon: '🎯' }, 
         { path: '/salesperson/call-logs',  label: 'Call Logs',   icon: '📞' },
         { path: '/salesperson/history',    label: 'My History',  icon: '🕑' },
         { path: '/salesperson/sync',       label: 'Sync Calls',  icon: '📲' },

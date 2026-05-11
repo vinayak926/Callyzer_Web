@@ -358,6 +358,73 @@ export const api = {
     });
     return res.json();
     },
+
+    // ── LEADS ──────────────────────────────────────────────────
+    getLeads: async (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.status)   query.append('status',   params.status);
+    if (params.search)   query.append('search',   params.search);
+    if (params.fromDate) query.append('fromDate', params.fromDate);
+    if (params.toDate)   query.append('toDate',   params.toDate);
+    if (params.page)     query.append('page',     params.page);
+    if (params.limit)    query.append('limit',    params.limit);
+    const res = await fetch(`${API_BASE_URL}/leads?${query}`, { headers: authHeaders() });
+    return res.json();
+    },
+
+    getLeadById: async (id) => {
+    const res = await fetch(`${API_BASE_URL}/leads/${id}`, { headers: authHeaders() });
+    return res.json();
+    },
+
+    createLead: async (data) => {
+    const res = await fetch(`${API_BASE_URL}/leads`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify(data),
+    });
+    return res.json();
+    },
+
+    updateLead: async (id, data) => {
+    const res = await fetch(`${API_BASE_URL}/leads/${id}`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify(data),
+    });
+    return res.json();
+    },
+
+    deleteLead: async (id) => {
+    const res = await fetch(`${API_BASE_URL}/leads/${id}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+    });
+    return res.json();
+    },
+
+    importLeads: async (leads, importType = 'csv') => {
+    const res = await fetch(`${API_BASE_URL}/leads/import`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ leads, importType }),
+    });
+    return res.json();
+    },
+
+    addFollowUp: async (id, data) => {
+    const res = await fetch(`${API_BASE_URL}/leads/${id}/followup`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify(data),
+    });
+    return res.json();
+    },
+
+    getLeadStats: async () => {
+    const res = await fetch(`${API_BASE_URL}/leads/stats`, { headers: authHeaders() });
+    return res.json();
+    },
 };
 
 export default api;

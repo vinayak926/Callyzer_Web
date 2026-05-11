@@ -31,9 +31,11 @@ import AdminApprovals from './pages/admin/AdminApprovals';
 // Business Pages
 import BusinessDashboard from './pages/business/BusinessDashboard';
 import MyTeam from './pages/business/MyTeam';
+import BusinessLeads from './pages/business/Leads';
 
 // Salesperson Pages
 import SalespersonDashboard from './pages/salesperson/SalespersonDashboard';
+import SalespersonLeads from './pages/salesperson/MyLeads';
 
 import Pricing from './pages/Pricing';
 import Checkout from './pages/Checkout';
@@ -81,6 +83,7 @@ function AppRoutes() {
                     <Route element={<BusinessRoute />}>
                         <Route path="/business/dashboard" element={<BusinessDashboard />} />
                         <Route path="/business/team" element={<MyTeam />} />
+                        <Route path="/business/leads"        element={<BusinessLeads />} />
                         <Route path="/business/live-feed" element={<LiveFeed />} />
                         <Route path="/business/call-logs" element={<CallLogs />} />
                         <Route path="/business/reports" element={<Reports />} />
@@ -92,6 +95,7 @@ function AppRoutes() {
                     {/* Salesperson Routes */}
                     <Route element={<SalespersonRoute />}>
                         <Route path="/salesperson/dashboard" element={<SalespersonDashboard />} />
+                        <Route path="/salesperson/leads"       element={<SalespersonLeads />} />
                         <Route path="/salesperson/call-logs" element={<CallLogs />} />
                         <Route path="/salesperson/history" element={<CallHistory />} />
                         <Route path="/salesperson/sync" element={<DeviceCallSync />} />
