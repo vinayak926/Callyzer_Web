@@ -159,7 +159,20 @@ export default function BusinessDashboard() {
         const fetchStats = async () => {
             try {
                 const res = await api.getTeamCallStats();
-                if (res) { setTeamStats(res.summary || res); setAgents(res.agents || []); }
+                // if (res) { setTeamStats(res.summary || res); setAgents(res.agents || []); }
+                if (res) {
+                    // Backend se summary ya direct stats dono handle karo
+                    setTeamStats(res.summary || res);
+                    // agents array — naye format mein bhi 'stats' field ho sakta hai
+                    const agentList = res.agents || res.stats?.map(a => ({
+                        _id: a.agentId || a._id,
+                        name: a.name,
+                        totalCalls: a.total || a.totalCalls || 0,
+                        connectedCalls: a.connected || a.connectedCalls || 0,
+                        missedCalls: a.missed || a.missedCalls || 0,
+                    })) || [];
+                    setAgents(agentList);
+                }
             } catch (e) { console.log(e); }
             setLoading(false);
         };

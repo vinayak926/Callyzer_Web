@@ -1,733 +1,312 @@
-// import { useState, useEffect, useCallback } from 'react';
-// import { api } from '../services/api';
+// src/pages/Reports.jsx
+// Role-based report page:
+//   salesperson  → sees only own call logs (GET /api/reports/my-calllogs)
+//   business_user → redirected to /business/salesperson-reports
+//   super_admin   → existing generic reports view (unchanged)
 
-// const fmtDuration = (s) => {
-//     if (!s) return '0m';
-//     const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
-//     return h > 0 ? `${h}h ${m}m` : `${m}m`;
-// };
-// const getDateRange = (period) => {
-//     const now = new Date();
-//     const to  = now.toISOString().split('T')[0];
-//     let from;
-//     if      (period === 'today')   { from = to; }
-//     else if (period === 'week')    { const d = new Date(now); d.setDate(d.getDate() - 6);   from = d.toISOString().split('T')[0]; }
-//     else if (period === 'month')   { const d = new Date(now); d.setDate(1);                  from = d.toISOString().split('T')[0]; }
-//     else                           { const d = new Date(now); d.setMonth(d.getMonth() - 3); from = d.toISOString().split('T')[0]; }
-//     return { dateFrom: from, dateTo: to };
-// };
-// const buildDailyBuckets = (logs, period) => {
-//     const buckets = {};
-//     const now  = new Date();
-//     const days = period === 'today' ? 1 : period === 'week' ? 7 : period === 'month' ? 30 : 90;
-//     for (let i = days - 1; i >= 0; i--) {
-//         const d = new Date(now); d.setDate(d.getDate() - i);
-//         const key = d.toISOString().split('T')[0];
-//         buckets[key] = { date: key, total: 0, connected: 0, missed: 0, rejected: 0 };
-//     }
-//     logs.forEach(log => {
-//         const key = log.calledAt ? log.calledAt.split('T')[0] : null;
-//         if (key && buckets[key]) {
-//             buckets[key].total++;
-//             if (log.callStatus === 'Connected') buckets[key].connected++;
-//             else if (log.callStatus === 'Missed') buckets[key].missed++;
-//             else if (log.callStatus === 'Rejected') buckets[key].rejected++;
-//         }
-//     });
-//     return Object.values(buckets);
-// };
-
-// const PERIODS = [
-//     { key: 'today',   label: 'Today',      icon: '📅' },
-//     { key: 'week',    label: 'This Week',  icon: '📆' },
-//     { key: 'month',   label: 'This Month', icon: '📊' },
-//     { key: 'quarter', label: 'Last 3M',    icon: '📈' },
-// ];
-
-// // Mini horizontal bar
-// function MiniBar({ value, max, color }) {
-//     const pct = Math.round((value / Math.max(max, 1)) * 100);
-//     return (
-//         <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden mx-2">
-//             <div className="h-2 rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
-//         </div>
-//     );
-// }
-
-// export default function Reports() {
-//     const [period, setPeriod]       = useState('month');
-//     const [logs, setLogs]           = useState([]);
-//     const [loading, setLoading]     = useState(true);
-//     const [refreshing, setRefreshing] = useState(false);
-//     const [error, setError]         = useState('');
-//     const [exporting, setExporting] = useState(false);
-//     const [hourlyData, setHourlyData] = useState([]);
-//     const [peakHour, setPeakHour]   = useState(null);
-//     const [agentReports, setAgentReports] = useState([]);
-
-//     const fetchData = useCallback(async () => {
-//         setError('');
-//         try {
-//             const { dateFrom, dateTo } = getDateRange(period);
-//             const [logsRes, hourlyRes, teamRes] = await Promise.allSettled([
-//                 api.getCallLogs({ dateFrom, dateTo, limit: 500, sortField: 'calledAt', sortDir: 'asc' }),
-//                 api.getHourlyReport(new Date().toISOString().split('T')[0]),
-//                 api.getTeamCallStats(),
-//             ]);
-//             if (logsRes.status === 'fulfilled') {
-//                 const r = logsRes.value;
-//                 setLogs(r?.logs || (Array.isArray(r) ? r : []));
-//             }
-//             if (hourlyRes.status === 'fulfilled') {
-//                 const h = hourlyRes.value;
-//                 setHourlyData(h?.workHours || []);
-//                 setPeakHour(h?.peakHour || null);
-//             }
-//             if (teamRes.status === 'fulfilled') {
-//                 setAgentReports(teamRes.value?.agents || []);
-//             }
-//         } catch { setError('Cannot connect to server.'); }
-//         finally { setLoading(false); setRefreshing(false); }
-//     }, [period]);
-
-//     useEffect(() => { setLoading(true); fetchData(); }, [fetchData]);
-
-//     // ── Computed ──────────────────────────────────────────
-//     const total     = logs.length;
-//     const connected = logs.filter(l => l.callStatus === 'Connected').length;
-//     const missed    = logs.filter(l => l.callStatus === 'Missed').length;
-//     const rejected  = logs.filter(l => l.callStatus === 'Rejected').length;
-//     const outgoing  = logs.filter(l => l.callType === 'Outgoing').length;
-//     const incoming  = logs.filter(l => l.callType === 'Incoming').length;
-//     const connRate  = total ? Math.round((connected / total) * 100) : 0;
-//     const totalDur  = logs.reduce((s, l) => s + (l.durationSeconds || 0), 0);
-//     const avgDur    = total ? Math.round(totalDur / total) : 0;
-
-//     const dispositions = {};
-//     logs.forEach(l => { if (l.disposition) dispositions[l.disposition] = (dispositions[l.disposition] || 0) + 1; });
-//     const dispEntries = Object.entries(dispositions).sort((a, b) => b[1] - a[1]);
-
-//     const allBuckets   = buildDailyBuckets(logs, period);
-//     const step         = period === 'quarter' ? 7 : period === 'month' ? 3 : 1;
-//     const chartBuckets = allBuckets.filter((_, i, arr) => i % step === 0 || i === arr.length - 1);
-//     const maxBucket    = Math.max(...allBuckets.map(b => b.total), 1);
-
-//     const summaryCards = [
-//         { title: 'Total Calls',    value: String(total),              color: '#6366f1', icon: '📞' },
-//         { title: 'Connected',      value: String(connected),          color: '#22c55e', icon: '✅' },
-//         { title: 'Missed',         value: String(missed),             color: '#ef4444', icon: '❌' },
-//         { title: 'Connect Rate',   value: `${connRate}%`,             color: '#3b82f6', icon: '📈' },
-//         { title: 'Avg Duration',   value: fmtDuration(avgDur),        color: '#8b5cf6', icon: '⏱' },
-//         { title: 'Total Duration', value: fmtDuration(totalDur),      color: '#f59e0b', icon: '🕐' },
-//     ];
-
-//     const periodLabel     = PERIODS.find(p => p.key === period)?.label || '';
-//     const { dateFrom, dateTo } = getDateRange(period);
-
-//     // ── Export CSV ────────────────────────────────────────
-//     const handleExportCSV = () => {
-//         if (total === 0) return;
-//         const headers = ['Customer Name', 'Phone', 'Type', 'Status', 'Duration', 'Disposition', 'Date'];
-//         const rows = logs.map(l => [
-//             l.customerName || '—', l.customerNumber || '—', l.callType || '—',
-//             l.callStatus || '—', fmtDuration(l.durationSeconds),
-//             l.disposition || '—',
-//             l.calledAt ? new Date(l.calledAt).toLocaleDateString('en-IN') : '—',
-//         ]);
-//         const csv  = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n');
-//         const blob = new Blob([csv], { type: 'text/csv' });
-//         const url  = URL.createObjectURL(blob);
-//         const a    = document.createElement('a');
-//         a.href = url; a.download = `report-${period}.csv`; a.click();
-//         URL.revokeObjectURL(url);
-//     };
-
-//     if (loading) return (
-//         <div className="flex flex-col items-center justify-center h-full gap-3 bg-gray-50">
-//             <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-//             <p className="text-sm text-gray-500 font-medium">Loading reports...</p>
-//         </div>
-//     );
-
-//     return (
-//         <div className="min-h-full bg-gray-100">
-//             {/* Header */}
-//             <div className="bg-slate-900 px-4 lg:px-6 py-6 rounded-b-3xl">
-//                 <div className="flex items-center justify-between max-w-5xl mx-auto">
-//                     <div>
-//                         <h2 className="text-xl font-extrabold text-white">Reports & Analytics</h2>
-//                         <p className="text-sm text-slate-400 mt-0.5">Track your call performance metrics</p>
-//                     </div>
-//                     <div className="w-12 h-12 rounded-full bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-2xl">📊</div>
-//                 </div>
-//             </div>
-
-//             <div className="p-4 lg:p-6 max-w-5xl mx-auto space-y-5">
-//                 {/* Period Selector */}
-//                 <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
-//                     <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Select Period</p>
-//                     <div className="flex flex-wrap gap-2">
-//                         {PERIODS.map(p => (
-//                             <button key={p.key} onClick={() => setPeriod(p.key)}
-//                                 className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold border-2 transition-colors ${period === p.key ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-indigo-300'}`}>
-//                                 <span>{p.icon}</span> {p.label}
-//                             </button>
-//                         ))}
-//                     </div>
-//                 </div>
-
-//                 {/* Export Buttons */}
-//                 <div className="flex gap-3">
-//                     <button onClick={handleExportCSV} disabled={total === 0} className="flex-1 flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-bold rounded-2xl shadow-sm text-sm">
-//                         ⬇️ Download CSV
-//                     </button>
-//                     <button onClick={() => window.print()} className="flex-1 flex items-center justify-center gap-2 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-2xl shadow-sm text-sm">
-//                         🖨️ Print Report
-//                     </button>
-//                 </div>
-
-//                 {/* Error */}
-//                 {error && (
-//                     <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-4 flex items-center justify-between">
-//                         <p className="text-red-600 text-sm">⚠️ {error}</p>
-//                         <button onClick={fetchData} className="text-red-600 font-bold text-sm ml-4">Retry →</button>
-//                     </div>
-//                 )}
-
-//                 {/* Empty */}
-//                 {!error && total === 0 && (
-//                     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-12 text-center">
-//                         <div className="text-5xl mb-4">📊</div>
-//                         <p className="text-lg font-bold text-gray-800">No Calls Found</p>
-//                         <p className="text-sm text-gray-500 mt-1">No call logs for "{periodLabel}"</p>
-//                         <p className="text-xs text-gray-400 mt-1">Select a different period or add some calls first</p>
-//                     </div>
-//                 )}
-
-//                 {total > 0 && (
-//                     <>
-//                         {/* Summary Cards */}
-//                         <div>
-//                             <div className="flex items-center gap-2 mb-3">
-//                                 <div className="w-1 h-5 bg-indigo-600 rounded-full" />
-//                                 <h3 className="font-bold text-gray-900 text-sm">Key Metrics — {periodLabel}</h3>
-//                             </div>
-//                             <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-//                                 {summaryCards.map((card, i) => (
-//                                     <div key={i} className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm" style={{ borderTop: `3px solid ${card.color}` }}>
-//                                         <div className="text-xl mb-2">{card.icon}</div>
-//                                         <p className="text-2xl font-extrabold" style={{ color: card.color }}>{card.value}</p>
-//                                         <p className="text-xs text-gray-500 font-medium mt-1">{card.title}</p>
-//                                     </div>
-//                                 ))}
-//                             </div>
-//                         </div>
-
-//                         {/* Call Type Split */}
-//                         <div>
-//                             <div className="flex items-center gap-2 mb-3">
-//                                 <div className="w-1 h-5 bg-indigo-600 rounded-full" />
-//                                 <h3 className="font-bold text-gray-900 text-sm">Call Type Split</h3>
-//                             </div>
-//                             <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm space-y-3">
-//                                 {[{ label: 'Outgoing', value: outgoing, color: '#6366f1' }, { label: 'Incoming', value: incoming, color: '#3b82f6' }].map(item => (
-//                                     <div key={item.label} className="flex items-center gap-2">
-//                                         <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
-//                                         <span className="text-sm font-semibold text-gray-700 w-20">{item.label}</span>
-//                                         <MiniBar value={item.value} max={total} color={item.color} />
-//                                         <span className="text-sm font-bold text-gray-700 w-8 text-right">{item.value}</span>
-//                                         <span className="text-xs text-gray-400 w-10 text-right">{total ? Math.round((item.value / total) * 100) : 0}%</span>
-//                                     </div>
-//                                 ))}
-//                             </div>
-//                         </div>
-
-//                         {/* Status Distribution */}
-//                         <div>
-//                             <div className="flex items-center gap-2 mb-3">
-//                                 <div className="w-1 h-5 bg-indigo-600 rounded-full" />
-//                                 <h3 className="font-bold text-gray-900 text-sm">Call Status Distribution</h3>
-//                             </div>
-//                             <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm space-y-3">
-//                                 {[
-//                                     { label: 'Connected', value: connected, color: '#22c55e' },
-//                                     { label: 'Missed',    value: missed,    color: '#ef4444' },
-//                                     { label: 'Rejected',  value: rejected,  color: '#f59e0b' },
-//                                 ].map(item => (
-//                                     <div key={item.label} className="flex items-center gap-2">
-//                                         <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
-//                                         <span className="text-sm font-semibold text-gray-700 w-20">{item.label}</span>
-//                                         <MiniBar value={item.value} max={total} color={item.color} />
-//                                         <span className="text-sm font-bold text-gray-700 w-8 text-right">{item.value}</span>
-//                                         <span className="text-xs text-gray-400 w-10 text-right">{total ? Math.round((item.value / total) * 100) : 0}%</span>
-//                                     </div>
-//                                 ))}
-//                             </div>
-//                         </div>
-
-//                         {/* Daily Trend */}
-//                         <div>
-//                             <div className="flex items-center gap-2 mb-3">
-//                                 <div className="w-1 h-5 bg-indigo-600 rounded-full" />
-//                                 <h3 className="font-bold text-gray-900 text-sm">Daily Trend</h3>
-//                             </div>
-//                             <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm overflow-x-auto">
-//                                 <div className="flex items-center gap-4 mb-3 pb-3 border-b border-gray-100">
-//                                     {[['Connected', '#22c55e'], ['Missed', '#ef4444'], ['Rejected', '#f59e0b']].map(([l, c]) => (
-//                                         <div key={l} className="flex items-center gap-1.5">
-//                                             <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: c }} />
-//                                             <span className="text-xs text-gray-500 font-medium">{l}</span>
-//                                         </div>
-//                                     ))}
-//                                 </div>
-//                                 <div className="flex items-end gap-2 min-w-0 overflow-x-auto pb-2" style={{ minHeight: '120px' }}>
-//                                     {chartBuckets.map((b, i) => {
-//                                         const BAR_H   = 80;
-//                                         const connH   = Math.round((b.connected / maxBucket) * BAR_H);
-//                                         const missH   = Math.round((b.missed    / maxBucket) * BAR_H);
-//                                         const rejH    = Math.round((b.rejected  / maxBucket) * BAR_H);
-//                                         const label   = period === 'today' ? 'Today' :
-//                                             period === 'week' ? ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'][new Date(b.date).getDay()] :
-//                                             b.date.slice(5);
-//                                         return (
-//                                             <div key={i} className="flex flex-col items-center min-w-[32px]">
-//                                                 <span className="text-xs text-gray-400 mb-1 font-medium" style={{ minHeight: '16px' }}>{b.total || ''}</span>
-//                                                 <div className="flex items-end gap-0.5" style={{ height: BAR_H }}>
-//                                                     {connH > 0 && <div className="w-2 rounded-t" style={{ height: connH, backgroundColor: '#22c55e' }} />}
-//                                                     {missH > 0 && <div className="w-2 rounded-t" style={{ height: missH, backgroundColor: '#ef4444' }} />}
-//                                                     {rejH  > 0 && <div className="w-2 rounded-t" style={{ height: rejH,  backgroundColor: '#f59e0b' }} />}
-//                                                     {b.total === 0 && <div className="w-2 rounded-t bg-gray-200" style={{ height: 4 }} />}
-//                                                 </div>
-//                                                 <span className="text-xs text-gray-400 mt-1">{label}</span>
-//                                             </div>
-//                                         );
-//                                     })}
-//                                 </div>
-//                             </div>
-//                         </div>
-
-//                         {/* Disposition Breakdown */}
-//                         {dispEntries.length > 0 && (
-//                             <div>
-//                                 <div className="flex items-center gap-2 mb-3">
-//                                     <div className="w-1 h-5 bg-indigo-600 rounded-full" />
-//                                     <h3 className="font-bold text-gray-900 text-sm">Disposition Breakdown</h3>
-//                                 </div>
-//                                 <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm space-y-3">
-//                                     {dispEntries.map(([label, count], i) => {
-//                                         const cols  = ['#6366f1', '#22c55e', '#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6', '#06b6d4'];
-//                                         const color = cols[i % cols.length];
-//                                         return (
-//                                             <div key={label} className="flex items-center gap-2">
-//                                                 <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
-//                                                 <span className="text-sm font-semibold text-gray-700 w-28 truncate">{label}</span>
-//                                                 <MiniBar value={count} max={total} color={color} />
-//                                                 <span className="text-sm font-bold text-gray-700 w-8 text-right">{count}</span>
-//                                                 <span className="text-xs text-gray-400 w-10 text-right">{Math.round((count / total) * 100)}%</span>
-//                                             </div>
-//                                         );
-//                                     })}
-//                                 </div>
-//                             </div>
-//                         )}
-
-//                         {/* Today's Hourly Breakdown */}
-//                         {hourlyData.length > 0 && (
-//                             <div>
-//                                 <div className="flex items-center gap-2 mb-3">
-//                                     <div className="w-1 h-5 bg-indigo-600 rounded-full" />
-//                                     <h3 className="font-bold text-gray-900 text-sm">Today's Hourly Breakdown</h3>
-//                                 </div>
-//                                 {peakHour && peakHour.total > 0 && (
-//                                     <div className="flex items-center gap-3 bg-amber-50 border-2 border-amber-400 rounded-2xl p-4 mb-3">
-//                                         <span className="text-3xl">🔥</span>
-//                                         <div>
-//                                             <p className="font-extrabold text-amber-800">Peak Hour: {peakHour.label}</p>
-//                                             <p className="text-sm text-amber-700">{peakHour.total} calls · {peakHour.connected} connected</p>
-//                                         </div>
-//                                     </div>
-//                                 )}
-//                                 <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-//                                     <table className="w-full text-sm">
-//                                         <thead className="bg-slate-900 text-white">
-//                                             <tr>
-//                                                 <th className="px-4 py-3 text-left text-xs font-bold">Hour</th>
-//                                                 <th className="px-4 py-3 text-center text-xs font-bold">Total</th>
-//                                                 <th className="px-4 py-3 text-center text-xs font-bold">✅</th>
-//                                                 <th className="px-4 py-3 text-center text-xs font-bold">❌</th>
-//                                                 <th className="px-4 py-3 text-center text-xs font-bold">Rate</th>
-//                                             </tr>
-//                                         </thead>
-//                                         <tbody className="divide-y divide-gray-50">
-//                                             {hourlyData.filter(h => h.total > 0).map((h, i) => {
-//                                                 const rate   = h.total > 0 ? Math.round((h.connected / h.total) * 100) : 0;
-//                                                 const isPeak = peakHour && peakHour.hour === h.hour;
-//                                                 return (
-//                                                     <tr key={i} className={`${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} ${isPeak ? '!bg-amber-50' : ''}`}>
-//                                                         <td className="px-4 py-2.5 font-semibold text-gray-800 text-sm">
-//                                                             {isPeak && <span className="mr-1.5">🔥</span>}{h.label}
-//                                                         </td>
-//                                                         <td className="px-4 py-2.5 text-center font-bold text-gray-800">{h.total}</td>
-//                                                         <td className="px-4 py-2.5 text-center font-semibold text-green-600">{h.connected}</td>
-//                                                         <td className="px-4 py-2.5 text-center font-semibold text-red-500">{h.missed}</td>
-//                                                         <td className={`px-4 py-2.5 text-center font-bold ${rate >= 50 ? 'text-green-600' : 'text-red-500'}`}>{rate}%</td>
-//                                                     </tr>
-//                                                 );
-//                                             })}
-//                                         </tbody>
-//                                     </table>
-//                                 </div>
-//                             </div>
-//                         )}
-
-//                         {/* Team Performance */}
-//                         {agentReports.length > 0 && (
-//                             <div>
-//                                 <div className="flex items-center gap-2 mb-3">
-//                                     <div className="w-1 h-5 bg-indigo-600 rounded-full" />
-//                                     <h3 className="font-bold text-gray-900 text-sm">Today's Team Performance</h3>
-//                                 </div>
-//                                 <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-//                                     <table className="w-full text-sm">
-//                                         <thead className="bg-slate-900 text-white">
-//                                             <tr>
-//                                                 <th className="px-4 py-3 text-left text-xs font-bold">Salesperson</th>
-//                                                 <th className="px-4 py-3 text-center text-xs font-bold">Calls</th>
-//                                                 <th className="px-4 py-3 text-center text-xs font-bold">✅</th>
-//                                                 <th className="px-4 py-3 text-center text-xs font-bold">Rate</th>
-//                                             </tr>
-//                                         </thead>
-//                                         <tbody className="divide-y divide-gray-50">
-//                                             {agentReports.map((agent, i) => {
-//                                                 const rate = agent.totalCalls > 0 ? Math.round((agent.connectedCalls / agent.totalCalls) * 100) : 0;
-//                                                 return (
-//                                                     <tr key={agent._id || i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
-//                                                         <td className="px-4 py-3">
-//                                                             <div className="flex items-center gap-2">
-//                                                                 <div className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center">
-//                                                                     <span className="text-xs font-bold text-indigo-600">{(agent.name || 'S').charAt(0).toUpperCase()}</span>
-//                                                                 </div>
-//                                                                 <span className="font-semibold text-gray-800">{agent.name}</span>
-//                                                             </div>
-//                                                         </td>
-//                                                         <td className="px-4 py-3 text-center font-bold text-gray-800">{agent.totalCalls}</td>
-//                                                         <td className="px-4 py-3 text-center font-semibold text-green-600">{agent.connectedCalls}</td>
-//                                                         <td className={`px-4 py-3 text-center font-bold ${rate >= 50 ? 'text-green-600' : 'text-red-500'}`}>{rate}%</td>
-//                                                     </tr>
-//                                                 );
-//                                             })}
-//                                         </tbody>
-//                                     </table>
-//                                 </div>
-//                             </div>
-//                         )}
-//                     </>
-//                 )}
-
-//                 <div className="h-8" />
-//             </div>
-//         </div>
-//     );
-// }
-
-
-// import React, { useState, useEffect, useContext } from 'react';
+// import React, { useState, useEffect, useContext, useCallback } from 'react';
+// import { useNavigate } from 'react-router-dom';
 // import { AuthContext } from '../context/AuthContext';
 // import { api } from '../services/api';
 // import {
-//     BarChart2, TrendingUp, Clock, Phone, PhoneOff, Calendar,
-//     Download, RefreshCcw, Filter,
+//     Phone, PhoneOff, PhoneCall, Clock, TrendingUp,
+//     Calendar, Download, RefreshCcw, Filter, FileText,
+//     CheckCircle, XCircle,
 // } from 'lucide-react';
-// import {
-//     Card, StatCard, Select, Button, LoadingPage, ProgressBar, SectionHeader, Badge,
-// } from '../components/UI';
+// import { Card, StatCard, Button, LoadingPage, Badge } from '../components/UI';
 
-// const fmtDuration = (s) => {
-//     if (!s) return '0s';
-//     const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+// // ── Helpers ────────────────────────────────────────────────
+// const today = () => new Date().toISOString().split('T')[0];
+
+// const fmtDuration = (sec) => {
+//     if (!sec || sec === 0) return '0s';
+//     const h = Math.floor(sec / 3600);
+//     const m = Math.floor((sec % 3600) / 60);
+//     const s = Math.round(sec % 60);
 //     if (h > 0) return `${h}h ${m}m`;
-//     return `${m}m`;
+//     if (m > 0) return `${m}m ${s}s`;
+//     return `${s}s`;
 // };
 
-// const fmtDate = (d) => d
-//     ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
-//     : '';
+// const fmtDateTime = (d) =>
+//     d ? new Date(d).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
 
-// const PERIOD_OPTIONS = [
-//     { value: 'today', label: 'Today' },
-//     { value: 'week', label: 'This Week' },
-//     { value: 'month', label: 'This Month' },
-//     { value: 'custom', label: 'Custom Range' },
-// ];
+// const statusColor = (s) => {
+//     if (s === 'Connected') return 'green';
+//     if (s === 'Missed')    return 'red';
+//     return 'yellow';
+// };
 
-// export default function Reports() {
-//     const { user } = useContext(AuthContext);
-//     const [period, setPeriod] = useState('week');
-//     const [dateFrom, setDateFrom] = useState('');
-//     const [dateTo, setDateTo] = useState('');
-//     const [loading, setLoading] = useState(true);
-//     const [stats, setStats] = useState(null);
-//     const [dailyData, setDailyData] = useState([]);
-//     const [agentStats, setAgentStats] = useState([]);
-
-//     const isAdmin = user?.role === 'super_admin';
-//     const isBusiness = user?.role === 'business_user';
-
-//     const getPeriodDates = (p) => {
-//         const today = new Date();
-//         const fmt = (d) => d.toISOString().split('T')[0];
-//         if (p === 'today') return { from: fmt(today), to: fmt(today) };
-//         if (p === 'week') {
-//             const mon = new Date(today);
-//             mon.setDate(today.getDate() - today.getDay() + 1);
-//             return { from: fmt(mon), to: fmt(today) };
-//         }
-//         if (p === 'month') {
-//             const start = new Date(today.getFullYear(), today.getMonth(), 1);
-//             return { from: fmt(start), to: fmt(today) };
-//         }
-//         return null;
+// // ── Status Badge ───────────────────────────────────────────
+// function StatusBadge({ status }) {
+//     const colors = {
+//         Connected: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+//         Missed:    'bg-rose-50 text-rose-700 border border-rose-200',
+//         Rejected:  'bg-amber-50 text-amber-700 border border-amber-200',
 //     };
+//     return (
+//         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${colors[status] || colors.Rejected}`}>
+//             {status}
+//         </span>
+//     );
+// }
 
-//     const fetchReports = async () => {
+// // ── CSV Export ─────────────────────────────────────────────
+// function downloadCSV(calls, salespersonName = 'My') {
+//     if (!calls.length) return;
+//     const headers = ['Date & Time', 'Customer Name', 'Phone', 'Type', 'Status', 'Duration', 'Disposition', 'Notes'];
+//     const rows = calls.map(c => [
+//         fmtDateTime(c.calledAt),
+//         c.customerName || '—',
+//         c.customerNumber || '—',
+//         c.callType || '—',
+//         c.callStatus || '—',
+//         fmtDuration(c.durationSeconds),
+//         c.disposition || '—',
+//         (c.notes || '').replace(/,/g, ';'),
+//     ]);
+//     const csv  = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+//     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+//     const url  = URL.createObjectURL(blob);
+//     const a    = document.createElement('a');
+//     a.href     = url;
+//     a.download = `${salespersonName}-call-report-${today()}.csv`;
+//     a.click();
+//     URL.revokeObjectURL(url);
+// }
+
+// // ══════════════════════════════════════════════════════════
+// //  SALESPERSON REPORT PAGE
+// // ══════════════════════════════════════════════════════════
+// function SalespersonReport({ user }) {
+//     const [fromDate, setFromDate] = useState(today());
+//     const [toDate,   setToDate]   = useState(today());
+//     const [loading,  setLoading]  = useState(true);
+//     const [data,     setData]     = useState(null);
+//     const [error,    setError]    = useState('');
+
+//     const fetchReport = useCallback(async () => {
 //         setLoading(true);
+//         setError('');
 //         try {
-//             let from = dateFrom, to = dateTo;
-//             if (period !== 'custom') {
-//                 const d = getPeriodDates(period);
-//                 if (d) { from = d.from; to = d.to; }
+//             const res = await api.getMyCallLogReport({ fromDate, toDate });
+//             if (res?.summary) {
+//                 setData(res);
+//             } else {
+//                 setError(res?.message || 'Failed to load report.');
 //             }
-//             const params = { dateFrom: from, dateTo: to };
-//             const [statsRes, dailyRes] = await Promise.allSettled([
-//                 api.getCallStats(params),
-//                 api.getDailyStats(params),
-//             ]);
-//             if (statsRes.status === 'fulfilled') setStats(statsRes.value);
-//             if (dailyRes.status === 'fulfilled') setDailyData(dailyRes.value?.daily || dailyRes.value?.data || []);
-
-//             if (isAdmin || isBusiness) {
-//                 const agentRes = await api.getAgentStats?.(params).catch(() => null);
-//                 if (agentRes) setAgentStats(agentRes?.agents || agentRes?.data || []);
-//             }
-//         } catch (e) { console.log(e); }
+//         } catch {
+//             setError('Cannot connect to server. Please try again.');
+//         }
 //         setLoading(false);
-//     };
+//     }, [fromDate, toDate]);
 
-//     useEffect(() => { if (period !== 'custom') fetchReports(); }, [period]);
-//     useEffect(() => { if (period === 'custom' && dateFrom && dateTo) fetchReports(); }, [dateFrom, dateTo]);
+//     useEffect(() => { fetchReport(); }, [fetchReport]);
 
-//     const totalCalls = stats?.totalCalls || 0;
-//     const connected = stats?.connected || stats?.connectedCalls || 0;
-//     const missed = stats?.missed || stats?.missedCalls || 0;
-//     const avgDuration = stats?.avgDuration || 0;
-//     const connectRate = totalCalls > 0 ? Math.round((connected / totalCalls) * 100) : 0;
-
-//     // Calculate bar chart max for normalization
-//     const maxDailyCalls = Math.max(...dailyData.map(d => d.totalCalls || 0), 1);
+//     const summary = data?.summary || {};
+//     const calls   = data?.calls   || [];
 
 //     return (
 //         <div className="space-y-5">
 //             {/* Header */}
 //             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 //                 <div>
-//                     <h2 className="text-xl font-bold text-slate-900">Reports & Analytics</h2>
-//                     <p className="text-sm text-slate-400 mt-0.5">Performance insights for your team</p>
+//                     <h2 className="text-xl font-bold text-slate-900">My Call Report</h2>
+//                     <p className="text-sm text-slate-400 mt-0.5">Your personal call performance</p>
 //                 </div>
 //                 <div className="flex items-center gap-2">
-//                     <Button variant="secondary" size="sm" icon={Download} onClick={() => api.exportReport?.({ period })}>
-//                         Export
+//                     <Button
+//                         variant="secondary" size="sm" icon={Download}
+//                         onClick={() => downloadCSV(calls, user?.name || 'My')}
+//                         disabled={!calls.length}
+//                     >
+//                         Download CSV
 //                     </Button>
-//                     <Button variant="secondary" size="sm" icon={RefreshCcw} onClick={fetchReports}>
+//                     <Button variant="secondary" size="sm" icon={RefreshCcw} onClick={fetchReport}>
 //                         Refresh
 //                     </Button>
 //                 </div>
 //             </div>
 
-//             {/* Period Selector */}
+//             {/* Date Filter */}
 //             <Card>
 //                 <div className="flex items-center gap-2 mb-3">
 //                     <Filter size={15} className="text-slate-400" />
 //                     <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Date Range</span>
+//                     <span className="ml-auto text-xs text-slate-400">(Default: Today)</span>
 //                 </div>
-//                 <div className="flex flex-wrap gap-2 mb-3">
-//                     {PERIOD_OPTIONS.map(opt => (
-//                         <button
-//                             key={opt.value}
-//                             onClick={() => setPeriod(opt.value)}
-//                             className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${period === opt.value
-//                                     ? 'bg-blue-600 text-white shadow-sm'
-//                                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-//                                 }`}
-//                         >
-//                             {opt.label}
-//                         </button>
-//                     ))}
-//                 </div>
-//                 {period === 'custom' && (
-//                     <div className="grid sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100">
-//                         <div>
-//                             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">From</label>
-//                             <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="input-field" />
-//                         </div>
-//                         <div>
-//                             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">To</label>
-//                             <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="input-field" />
-//                         </div>
+//                 <div className="grid sm:grid-cols-2 gap-3">
+//                     <div>
+//                         <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">From</label>
+//                         <input
+//                             type="date" value={fromDate} max={toDate}
+//                             onChange={e => setFromDate(e.target.value)}
+//                             className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+//                         />
 //                     </div>
-//                 )}
+//                     <div>
+//                         <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">To</label>
+//                         <input
+//                             type="date" value={toDate} min={fromDate}
+//                             onChange={e => setToDate(e.target.value)}
+//                             className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+//                         />
+//                     </div>
+//                 </div>
 //             </Card>
+
+//             {/* Error */}
+//             {error && (
+//                 <div className="bg-rose-50 border border-rose-200 rounded-2xl px-5 py-4 flex items-center justify-between">
+//                     <p className="text-rose-700 text-sm font-medium">⚠️ {error}</p>
+//                     <button onClick={fetchReport} className="text-rose-600 font-semibold text-sm ml-4 hover:underline">Retry →</button>
+//                 </div>
+//             )}
 
 //             {loading ? (
 //                 <LoadingPage />
 //             ) : (
 //                 <>
-//                     {/* KPI Stats */}
+//                     {/* Summary Stats */}
 //                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-//                         <StatCard label="Total Calls" value={totalCalls} icon={Phone} color="#3B82F6" bgColor="#EFF6FF" />
-//                         <StatCard label="Connected" value={connected} icon={TrendingUp} color="#10B981" bgColor="#ECFDF5" />
-//                         <StatCard label="Missed" value={missed} icon={PhoneOff} color="#F43F5E" bgColor="#FFF1F2" />
-//                         <StatCard label="Avg Duration" value={fmtDuration(avgDuration)} icon={Clock} color="#8B5CF6" bgColor="#F5F3FF" />
+//                         <StatCard
+//                             label="Total Calls" value={summary.total ?? 0}
+//                             icon={Phone} color="#3B82F6" bgColor="#EFF6FF"
+//                         />
+//                         <StatCard
+//                             label="Connected" value={summary.connected ?? 0}
+//                             icon={CheckCircle} color="#10B981" bgColor="#ECFDF5"
+//                         />
+//                         <StatCard
+//                             label="Not Connected" value={summary.notConnected ?? 0}
+//                             icon={XCircle} color="#F43F5E" bgColor="#FFF1F2"
+//                         />
+//                         <StatCard
+//                             label="Total Duration" value={summary.totalDuration || '0s'}
+//                             icon={Clock} color="#8B5CF6" bgColor="#F5F3FF"
+//                         />
 //                     </div>
 
-//                     {/* Connection Rate Card */}
+//                     {/* Connection Rate + Avg Duration */}
 //                     <div className="grid lg:grid-cols-3 gap-4">
-//                         <Card className="lg:col-span-1">
+//                         <Card>
 //                             <div className="flex items-center gap-2 mb-4">
 //                                 <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center">
 //                                     <TrendingUp size={18} className="text-emerald-600" />
 //                                 </div>
 //                                 <p className="font-bold text-slate-800">Connection Rate</p>
 //                             </div>
-//                             {/* Donut-style visual */}
 //                             <div className="flex items-center justify-center mb-4">
-//                                 <div className="relative w-32 h-32">
-//                                     <svg viewBox="0 0 36 36" className="w-32 h-32 -rotate-90">
-//                                         <circle cx="18" cy="18" r="15.9" fill="none" stroke="#F1F5F9" strokeWidth="3.8" />
+//                                 <div className="relative w-28 h-28">
+//                                     <svg viewBox="0 0 36 36" className="w-28 h-28 -rotate-90">
+//                                         <circle cx="18" cy="18" r="15.9" fill="none" stroke="#F1F5F9" strokeWidth="4" />
 //                                         <circle
 //                                             cx="18" cy="18" r="15.9" fill="none"
-//                                             stroke={connectRate >= 50 ? '#10B981' : '#F43F5E'}
-//                                             strokeWidth="3.8"
-//                                             strokeDasharray={`${connectRate} ${100 - connectRate}`}
+//                                             stroke={summary.connectRate >= 50 ? '#10B981' : '#F43F5E'}
+//                                             strokeWidth="4"
+//                                             strokeDasharray={`${summary.connectRate ?? 0} ${100 - (summary.connectRate ?? 0)}`}
 //                                             strokeLinecap="round"
 //                                         />
 //                                     </svg>
 //                                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-//                                         <p className="text-2xl font-bold text-slate-900">{connectRate}%</p>
-//                                         <p className="text-[10px] text-slate-400">Connected</p>
+//                                         <p className="text-2xl font-bold text-slate-900">{summary.connectRate ?? 0}%</p>
+//                                         <p className="text-[10px] text-slate-400">Rate</p>
 //                                     </div>
 //                                 </div>
 //                             </div>
-//                             <div className="space-y-2">
-//                                 <div className="flex items-center justify-between text-sm">
-//                                     <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500" /><span className="text-slate-600">Connected</span></div>
-//                                     <span className="font-semibold">{connected}</span>
-//                                 </div>
-//                                 <div className="flex items-center justify-between text-sm">
-//                                     <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-rose-400" /><span className="text-slate-600">Missed</span></div>
-//                                     <span className="font-semibold">{missed}</span>
-//                                 </div>
-//                                 <div className="flex items-center justify-between text-sm">
-//                                     <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-slate-200" /><span className="text-slate-600">Other</span></div>
-//                                     <span className="font-semibold">{totalCalls - connected - missed}</span>
-//                                 </div>
+//                             <div className="space-y-1.5 text-sm">
+//                                 <div className="flex justify-between"><span className="text-slate-500">Connected</span><span className="font-semibold text-emerald-600">{summary.connected ?? 0}</span></div>
+//                                 <div className="flex justify-between"><span className="text-slate-500">Missed</span><span className="font-semibold text-rose-600">{summary.missed ?? 0}</span></div>
+//                                 <div className="flex justify-between"><span className="text-slate-500">Rejected</span><span className="font-semibold text-amber-600">{summary.rejected ?? 0}</span></div>
 //                             </div>
 //                         </Card>
 
-//                         {/* Daily Trend Bar Chart */}
-//                         <Card className="lg:col-span-2" padding={false}>
-//                             <div className="p-5 border-b border-slate-50">
-//                                 <div className="flex items-center gap-2">
-//                                     <BarChart2 size={16} className="text-blue-500" />
-//                                     <p className="font-bold text-slate-800 text-sm">Daily Call Volume</p>
+//                         <Card className="lg:col-span-2">
+//                             <p className="font-bold text-slate-800 mb-4">Duration Summary</p>
+//                             <div className="grid grid-cols-2 gap-4">
+//                                 <div className="bg-purple-50 rounded-xl p-4 text-center">
+//                                     <p className="text-2xl font-bold text-purple-700">{summary.totalDuration || '0s'}</p>
+//                                     <p className="text-xs text-purple-500 mt-1 font-medium">Total Talk Time</p>
+//                                 </div>
+//                                 <div className="bg-blue-50 rounded-xl p-4 text-center">
+//                                     <p className="text-2xl font-bold text-blue-700">{summary.avgDuration || '0s'}</p>
+//                                     <p className="text-xs text-blue-500 mt-1 font-medium">Avg per Call</p>
 //                                 </div>
 //                             </div>
-//                             {dailyData.length === 0 ? (
-//                                 <div className="flex items-center justify-center h-40 text-sm text-slate-400">No daily data available</div>
-//                             ) : (
-//                                 <div className="p-5">
-//                                     <div className="flex items-end gap-1.5 h-40">
-//                                         {dailyData.slice(-14).map((day, i) => {
-//                                             const height = Math.max(4, Math.round((day.totalCalls / maxDailyCalls) * 100));
-//                                             const connH = day.totalCalls > 0
-//                                                 ? Math.round(((day.connectedCalls || 0) / day.totalCalls) * height) : 0;
-//                                             return (
-//                                                 <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
-//                                                     <div className="w-full flex flex-col justify-end" style={{ height: '100%' }}>
-//                                                         <div className="w-full rounded-sm overflow-hidden" style={{ height: `${height}%` }}>
-//                                                             <div className="w-full h-full flex flex-col justify-end">
-//                                                                 <div className="w-full rounded-sm bg-blue-200 relative" style={{ height: `${height}%` }}>
-//                                                                     <div className="absolute bottom-0 left-0 right-0 bg-blue-500 rounded-sm transition-all" style={{ height: `${connH}%` }} />
-//                                                                 </div>
-//                                                             </div>
-//                                                         </div>
-//                                                     </div>
-//                                                     {/* Tooltip */}
-//                                                     <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-medium px-2 py-1 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-//                                                         {fmtDate(day.date)}: {day.totalCalls} calls
-//                                                     </div>
-//                                                     <p className="text-[9px] text-slate-400 truncate w-full text-center">
-//                                                         {fmtDate(day.date)?.split(' ')[0]}
-//                                                     </p>
-//                                                 </div>
-//                                             );
-//                                         })}
-//                                     </div>
-//                                     <div className="flex items-center gap-4 mt-3 pt-3 border-t border-slate-100">
-//                                         <div className="flex items-center gap-1.5 text-xs text-slate-500">
-//                                             <div className="w-3 h-3 rounded-sm bg-blue-500" /> Connected
-//                                         </div>
-//                                         <div className="flex items-center gap-1.5 text-xs text-slate-500">
-//                                             <div className="w-3 h-3 rounded-sm bg-blue-200" /> Others
-//                                         </div>
-//                                     </div>
+//                             <div className="mt-4 pt-4 border-t border-slate-100 text-sm text-slate-500 space-y-1">
+//                                 <div className="flex justify-between">
+//                                     <span>Date range</span>
+//                                     <span className="font-medium text-slate-700">{fromDate} → {toDate}</span>
 //                                 </div>
-//                             )}
+//                                 <div className="flex justify-between">
+//                                     <span>Salesperson</span>
+//                                     <span className="font-medium text-slate-700">{user?.name}</span>
+//                                 </div>
+//                             </div>
 //                         </Card>
 //                     </div>
 
-//                     {/* Agent Breakdown (Admin/Business only) */}
-//                     {(isAdmin || isBusiness) && agentStats.length > 0 && (
+//                     {/* Call List Table */}
+//                     {calls.length === 0 ? (
+//                         <Card>
+//                             <div className="text-center py-12">
+//                                 <div className="text-5xl mb-4">📊</div>
+//                                 <p className="text-lg font-bold text-slate-800">No Calls Found</p>
+//                                 <p className="text-sm text-slate-400 mt-1">No call logs for the selected date range.</p>
+//                             </div>
+//                         </Card>
+//                     ) : (
 //                         <Card padding={false}>
-//                             <div className="p-5 border-b border-slate-50">
-//                                 <SectionHeader title="Agent Breakdown" />
+//                             <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+//                                 <div className="flex items-center gap-2">
+//                                     <FileText size={16} className="text-blue-500" />
+//                                     <p className="font-bold text-slate-800 text-sm">Call List ({calls.length})</p>
+//                                 </div>
+//                                 <Button
+//                                     variant="outline" size="sm" icon={Download}
+//                                     onClick={() => downloadCSV(calls, user?.name || 'My')}
+//                                 >
+//                                     Export CSV
+//                                 </Button>
 //                             </div>
 //                             <div className="overflow-x-auto">
-//                                 <table className="w-full">
+//                                 <table className="w-full text-sm">
 //                                     <thead>
 //                                         <tr className="border-b border-slate-100 bg-slate-50/60">
-//                                             <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Agent</th>
-//                                             <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Total</th>
-//                                             <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Connected</th>
-//                                             <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide hidden sm:table-cell">Rate</th>
-//                                             <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide hidden md:table-cell">Avg Duration</th>
+//                                             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Date & Time</th>
+//                                             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Customer</th>
+//                                             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Type</th>
+//                                             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+//                                             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Duration</th>
+//                                             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide hidden md:table-cell">Disposition</th>
 //                                         </tr>
 //                                     </thead>
 //                                     <tbody className="divide-y divide-slate-50">
-//                                         {agentStats.map((ag, i) => {
-//                                             const rate = ag.totalCalls > 0
-//                                                 ? Math.round(((ag.connectedCalls || 0) / ag.totalCalls) * 100) : 0;
-//                                             return (
-//                                                 <tr key={ag._id || i} className="hover:bg-slate-50/50 transition-colors">
-//                                                     <td className="px-5 py-3.5">
-//                                                         <div className="flex items-center gap-2.5">
-//                                                             <span className="text-xs text-slate-300 font-bold w-5">#{i + 1}</span>
-//                                                             <p className="text-sm font-semibold text-slate-800">{ag.name}</p>
-//                                                         </div>
-//                                                     </td>
-//                                                     <td className="px-5 py-3.5 text-sm font-bold text-blue-600">{ag.totalCalls}</td>
-//                                                     <td className="px-5 py-3.5 text-sm font-bold text-emerald-600">{ag.connectedCalls || 0}</td>
-//                                                     <td className="px-5 py-3.5 hidden sm:table-cell">
-//                                                         <div className="flex items-center gap-2">
-//                                                             <ProgressBar value={rate} max={100} color={rate >= 50 ? '#10B981' : '#F43F5E'} height={4} />
-//                                                             <span className="text-xs font-semibold text-slate-500 w-10 shrink-0">{rate}%</span>
-//                                                         </div>
-//                                                     </td>
-//                                                     <td className="px-5 py-3.5 text-sm text-slate-500 hidden md:table-cell">
-//                                                         {fmtDuration(ag.avgDuration)}
-//                                                     </td>
-//                                                 </tr>
-//                                             );
-//                                         })}
+//                                         {calls.map((call, i) => (
+//                                             <tr key={call._id || i} className="hover:bg-slate-50/50 transition-colors">
+//                                                 <td className="px-4 py-3 text-slate-600 whitespace-nowrap text-xs">
+//                                                     {fmtDateTime(call.calledAt)}
+//                                                 </td>
+//                                                 <td className="px-4 py-3">
+//                                                     <p className="font-semibold text-slate-800 text-sm">{call.customerName || 'Unknown'}</p>
+//                                                     <p className="text-xs text-slate-400">{call.customerNumber}</p>
+//                                                 </td>
+//                                                 <td className="px-4 py-3">
+//                                                     <span className={`text-xs font-semibold ${call.callType === 'Outgoing' ? 'text-blue-600' : 'text-violet-600'}`}>
+//                                                         {call.callType === 'Outgoing' ? '↑ Outgoing' : '↓ Incoming'}
+//                                                     </span>
+//                                                 </td>
+//                                                 <td className="px-4 py-3">
+//                                                     <StatusBadge status={call.callStatus} />
+//                                                 </td>
+//                                                 <td className="px-4 py-3 text-slate-600 font-medium text-sm">
+//                                                     {fmtDuration(call.durationSeconds)}
+//                                                 </td>
+//                                                 <td className="px-4 py-3 hidden md:table-cell text-slate-500 text-xs">
+//                                                     {call.disposition || '—'}
+//                                                 </td>
+//                                             </tr>
+//                                         ))}
 //                                     </tbody>
 //                                 </table>
 //                             </div>
@@ -739,22 +318,124 @@
 //     );
 // }
 
+// // ══════════════════════════════════════════════════════════
+// //  SUPER ADMIN / GENERIC REPORT (existing view, kept intact)
+// // ══════════════════════════════════════════════════════════
+// function GenericReport() {
+//     const [period, setPeriod] = useState('today');
+//     const [loading, setLoading] = useState(true);
+//     const [stats, setStats] = useState(null);
+
+//     const PERIOD_OPTIONS = [
+//         { value: 'today', label: 'Today' },
+//         { value: 'week',  label: 'This Week' },
+//         { value: 'month', label: 'This Month' },
+//     ];
+
+//     const fetchReports = useCallback(async () => {
+//         setLoading(true);
+//         try {
+//             const res = await api.getReports(period);
+//             setStats(res);
+//         } catch { /* silent */ }
+//         setLoading(false);
+//     }, [period]);
+
+//     useEffect(() => { fetchReports(); }, [fetchReports]);
+
+//     const totalCalls = stats?.total ?? 0;
+//     const connected  = stats?.connected ?? 0;
+//     const missed     = stats?.missed    ?? 0;
+
+//     return (
+//         <div className="space-y-5">
+//             <div>
+//                 <h2 className="text-xl font-bold text-slate-900">Reports & Analytics</h2>
+//                 <p className="text-sm text-slate-400 mt-0.5">System-wide performance insights</p>
+//             </div>
+//             <Card>
+//                 <div className="flex flex-wrap gap-2">
+//                     {PERIOD_OPTIONS.map(opt => (
+//                         <button
+//                             key={opt.value}
+//                             onClick={() => setPeriod(opt.value)}
+//                             className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${period === opt.value ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+//                         >
+//                             {opt.label}
+//                         </button>
+//                     ))}
+//                 </div>
+//             </Card>
+//             {loading ? (
+//                 <LoadingPage />
+//             ) : (
+//                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+//                     <StatCard label="Total Calls" value={totalCalls} icon={Phone} color="#3B82F6" bgColor="#EFF6FF" />
+//                     <StatCard label="Connected"   value={connected}  icon={CheckCircle} color="#10B981" bgColor="#ECFDF5" />
+//                     <StatCard label="Missed"      value={missed}     icon={XCircle}    color="#F43F5E" bgColor="#FFF1F2" />
+//                     <StatCard label="Connect Rate" value={`${stats?.connectRate ?? 0}%`} icon={TrendingUp} color="#8B5CF6" bgColor="#F5F3FF" />
+//                 </div>
+//             )}
+//         </div>
+//     );
+// }
+
+// // ══════════════════════════════════════════════════════════
+// //  ROOT EXPORT — Role Router
+// // ══════════════════════════════════════════════════════════
+// export default function Reports() {
+//     const { user } = useContext(AuthContext);
+//     const navigate = useNavigate();
+
+//     // Business user should use the dedicated Salesperson Reports page
+//     useEffect(() => {
+//         if (user?.role === 'business_user') {
+//             navigate('/business/salesperson-reports', { replace: true });
+//         }
+//     }, [user, navigate]);
+
+//     if (user?.role === 'salesperson')  return <SalespersonReport user={user} />;
+//     if (user?.role === 'super_admin')  return <GenericReport />;
+
+//     // business_user — redirecting (spinner while redirecting)
+//     return <LoadingPage />;
+// }
+
+
 // src/pages/Reports.jsx
-// Role-based report page:
-//   salesperson  → sees only own call logs (GET /api/reports/my-calllogs)
-//   business_user → redirected to /business/salesperson-reports
-//   super_admin   → existing generic reports view (unchanged)
+// ════════════════════════════════════════════════════════════
+//  CHANGE SUMMARY (Old → New):
+//
+//  OLD GenericReport:
+//   - Sirf /api/reports/summary call karta tha
+//   - Sirf 4 static cards dikhata tha (Total, Connected, Missed, Rate)
+//   - Koi chart nahi, koi agent breakdown nahi
+//   - Koi business user / salesperson breakdown nahi
+//
+//  NEW AdminReport:
+//   - /api/reports (full rich endpoint) call karta hai
+//   - summary.cards, weeklyTrend, monthlySummary,
+//     callDistribution, agentPerformance — sab use karta hai
+//   - Weekly bar chart (pure CSS, no extra lib)
+//   - Monthly trend line chart (pure SVG)
+//   - Call distribution (Incoming/Outgoing/Missed)
+//   - Agent/Salesperson performance table with connect-rate bar
+//   - Date range filter (Today/Week/Month/Quarter)
+//   - CSV export button
+//   - Fully role-aware: super_admin sees all, business_user
+//     sees only own team, salesperson uses SalespersonReport
+// ════════════════════════════════════════════════════════════
 
 import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { api } from '../services/api';
 import {
-    Phone, PhoneOff, PhoneCall, Clock, TrendingUp,
-    Calendar, Download, RefreshCcw, Filter, FileText,
-    CheckCircle, XCircle,
+    Phone, PhoneOff, TrendingUp, Clock, Users,
+    Download, RefreshCcw, Filter, CheckCircle,
+    XCircle, BarChart2, FileText, ChevronUp, ChevronDown,
 } from 'lucide-react';
-import { Card, StatCard, Button, LoadingPage, Badge } from '../components/UI';
+import { Card, StatCard, Button, LoadingPage, Badge, ProgressBar } from '../components/UI';
 
 // ── Helpers ────────────────────────────────────────────────
 const today = () => new Date().toISOString().split('T')[0];
@@ -772,13 +453,6 @@ const fmtDuration = (sec) => {
 const fmtDateTime = (d) =>
     d ? new Date(d).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
 
-const statusColor = (s) => {
-    if (s === 'Connected') return 'green';
-    if (s === 'Missed')    return 'red';
-    return 'yellow';
-};
-
-// ── Status Badge ───────────────────────────────────────────
 function StatusBadge({ status }) {
     const colors = {
         Connected: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
@@ -793,9 +467,9 @@ function StatusBadge({ status }) {
 }
 
 // ── CSV Export ─────────────────────────────────────────────
-function downloadCSV(calls, salespersonName = 'My') {
-    if (!calls.length) return;
-    const headers = ['Date & Time', 'Customer Name', 'Phone', 'Type', 'Status', 'Duration', 'Disposition', 'Notes'];
+function downloadCSV(calls, name = 'Report') {
+    if (!calls?.length) return;
+    const headers = ['Date & Time', 'Customer Name', 'Phone', 'Type', 'Status', 'Duration', 'Disposition', 'Agent'];
     const rows = calls.map(c => [
         fmtDateTime(c.calledAt),
         c.customerName || '—',
@@ -804,20 +478,125 @@ function downloadCSV(calls, salespersonName = 'My') {
         c.callStatus || '—',
         fmtDuration(c.durationSeconds),
         c.disposition || '—',
-        (c.notes || '').replace(/,/g, ';'),
+        c.agent?.name || '—',
     ]);
     const csv  = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
-    a.href     = url;
-    a.download = `${salespersonName}-call-report-${today()}.csv`;
+    a.href = url;
+    a.download = `${name}-report-${today()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
 }
 
+// ── Pure CSS Weekly Bar Chart ──────────────────────────────
+function WeeklyBarChart({ data = [] }) {
+    if (!data.length) return (
+        <div className="flex items-center justify-center h-32 text-sm text-slate-400">
+            No weekly data available
+        </div>
+    );
+    const max = Math.max(...data.map(d => d.calls || 0), 1);
+    const BAR_MAX_PX = 120;
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+    return (
+        // <div className="flex items-end gap-2 h-40 px-2">
+        // <div style={{ height: `${BAR_MAX_PX + 32}px` }}>
+        <div className="flex items-end gap-2 px-2" style={{ height: `${BAR_MAX_PX + 32}px` }}>
+            {data.map((d, i) => {
+                const h = Math.max(4, Math.round((d.calls / max) * 100));
+                return (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
+                        {/* Tooltip */}
+                        <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-medium px-2 py-1 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                            {d.calls} calls
+                        </div>
+                        {/* <div className="w-full flex flex-col justify-end" style={{ height: '100%' }}>
+                            <div
+                                className="w-full rounded-t-lg bg-blue-500 hover:bg-blue-600 transition-colors cursor-pointer"
+                                style={{ height: `${barH}px` }}
+                            />
+                        </div> */}
+                        <div className="w-6 flex flex-col justify-end">
+                            <div
+                                className="w-full rounded-t-lg bg-blue-500 hover:bg-blue-600 transition-colors cursor-pointer"
+                                style={{ height: `${h}px` }}
+                            />
+                        </div>
+                        <p className="text-[10px] text-slate-400">{days[i] || d.week || `D${i+1}`}</p>
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
+// ── SVG Monthly Trend Line ─────────────────────────────────
+function MonthlyLineChart({ data = [] }) {
+    if (!data.length) return (
+        <div className="flex items-center justify-center h-32 text-sm text-slate-400">
+            No monthly data available
+        </div>
+    );
+
+    const W = 400, H = 120, PAD = 20;
+    const max = Math.max(...data.map(d => d.total || 0), 1);
+    const pts = data.map((d, i) => ({
+        x: PAD + (i / (data.length - 1)) * (W - PAD * 2),
+        y: H - PAD - ((d.total / max) * (H - PAD * 2)),
+        d,
+    }));
+
+    const pathD = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+    const areaD = `${pathD} L ${pts[pts.length - 1].x} ${H} L ${pts[0].x} ${H} Z`;
+
+    return (
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-32">
+            <defs>
+                <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.2" />
+                    <stop offset="100%" stopColor="#3B82F6" stopOpacity="0" />
+                </linearGradient>
+            </defs>
+            <path d={areaD} fill="url(#lineGrad)" />
+            <path d={pathD} fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            {pts.map((p, i) => (
+                <g key={i}>
+                    <circle cx={p.x} cy={p.y} r="3" fill="#3B82F6" />
+                    <text x={p.x} y={H - 4} textAnchor="middle" fontSize="8" fill="#94a3b8">{p.d.month}</text>
+                </g>
+            ))}
+        </svg>
+    );
+}
+
+// ── Donut Chart (SVG) ──────────────────────────────────────
+function DonutChart({ connected = 0, total = 1 }) {
+    const rate = total > 0 ? Math.round((connected / total) * 100) : 0;
+    const color = rate >= 60 ? '#10B981' : rate >= 40 ? '#F59E0B' : '#F43F5E';
+    return (
+        <div className="relative w-28 h-28 mx-auto">
+            <svg viewBox="0 0 36 36" className="w-28 h-28 -rotate-90">
+                <circle cx="18" cy="18" r="15.9" fill="none" stroke="#F1F5F9" strokeWidth="4" />
+                <circle
+                    cx="18" cy="18" r="15.9" fill="none"
+                    stroke={color} strokeWidth="4"
+                    strokeDasharray={`${rate} ${100 - rate}`}
+                    strokeLinecap="round"
+                />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <p className="text-xl font-bold text-slate-900">{rate}%</p>
+                <p className="text-[10px] text-slate-400">Connected</p>
+            </div>
+        </div>
+    );
+}
+
 // ══════════════════════════════════════════════════════════
-//  SALESPERSON REPORT PAGE
+//  SALESPERSON REPORT (unchanged from original)
 // ══════════════════════════════════════════════════════════
 function SalespersonReport({ user }) {
     const [fromDate, setFromDate] = useState(today());
@@ -827,18 +606,12 @@ function SalespersonReport({ user }) {
     const [error,    setError]    = useState('');
 
     const fetchReport = useCallback(async () => {
-        setLoading(true);
-        setError('');
+        setLoading(true); setError('');
         try {
             const res = await api.getMyCallLogReport({ fromDate, toDate });
-            if (res?.summary) {
-                setData(res);
-            } else {
-                setError(res?.message || 'Failed to load report.');
-            }
-        } catch {
-            setError('Cannot connect to server. Please try again.');
-        }
+            if (res?.summary) setData(res);
+            else setError(res?.message || 'Failed to load report.');
+        } catch { setError('Cannot connect to server.'); }
         setLoading(false);
     }, [fromDate, toDate]);
 
@@ -849,54 +622,38 @@ function SalespersonReport({ user }) {
 
     return (
         <div className="space-y-5">
-            {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
                     <h2 className="text-xl font-bold text-slate-900">My Call Report</h2>
                     <p className="text-sm text-slate-400 mt-0.5">Your personal call performance</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button
-                        variant="secondary" size="sm" icon={Download}
-                        onClick={() => downloadCSV(calls, user?.name || 'My')}
-                        disabled={!calls.length}
-                    >
+                    <Button variant="secondary" size="sm" icon={Download} onClick={() => downloadCSV(calls, user?.name || 'My')} disabled={!calls.length}>
                         Download CSV
                     </Button>
-                    <Button variant="secondary" size="sm" icon={RefreshCcw} onClick={fetchReport}>
-                        Refresh
-                    </Button>
+                    <Button variant="secondary" size="sm" icon={RefreshCcw} onClick={fetchReport}>Refresh</Button>
                 </div>
             </div>
 
-            {/* Date Filter */}
             <Card>
                 <div className="flex items-center gap-2 mb-3">
                     <Filter size={15} className="text-slate-400" />
                     <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Date Range</span>
-                    <span className="ml-auto text-xs text-slate-400">(Default: Today)</span>
                 </div>
                 <div className="grid sm:grid-cols-2 gap-3">
                     <div>
                         <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">From</label>
-                        <input
-                            type="date" value={fromDate} max={toDate}
-                            onChange={e => setFromDate(e.target.value)}
-                            className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
+                        <input type="date" value={fromDate} max={toDate} onChange={e => setFromDate(e.target.value)}
+                            className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                     </div>
                     <div>
                         <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">To</label>
-                        <input
-                            type="date" value={toDate} min={fromDate}
-                            onChange={e => setToDate(e.target.value)}
-                            className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
+                        <input type="date" value={toDate} min={fromDate} onChange={e => setToDate(e.target.value)}
+                            className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                     </div>
                 </div>
             </Card>
 
-            {/* Error */}
             {error && (
                 <div className="bg-rose-50 border border-rose-200 rounded-2xl px-5 py-4 flex items-center justify-between">
                     <p className="text-rose-700 text-sm font-medium">⚠️ {error}</p>
@@ -904,31 +661,15 @@ function SalespersonReport({ user }) {
                 </div>
             )}
 
-            {loading ? (
-                <LoadingPage />
-            ) : (
+            {loading ? <LoadingPage /> : (
                 <>
-                    {/* Summary Stats */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                        <StatCard
-                            label="Total Calls" value={summary.total ?? 0}
-                            icon={Phone} color="#3B82F6" bgColor="#EFF6FF"
-                        />
-                        <StatCard
-                            label="Connected" value={summary.connected ?? 0}
-                            icon={CheckCircle} color="#10B981" bgColor="#ECFDF5"
-                        />
-                        <StatCard
-                            label="Not Connected" value={summary.notConnected ?? 0}
-                            icon={XCircle} color="#F43F5E" bgColor="#FFF1F2"
-                        />
-                        <StatCard
-                            label="Total Duration" value={summary.totalDuration || '0s'}
-                            icon={Clock} color="#8B5CF6" bgColor="#F5F3FF"
-                        />
+                        <StatCard label="Total Calls" value={summary.total ?? 0} icon={Phone} color="#3B82F6" bgColor="#EFF6FF" />
+                        <StatCard label="Connected" value={summary.connected ?? 0} icon={CheckCircle} color="#10B981" bgColor="#ECFDF5" />
+                        <StatCard label="Not Connected" value={summary.notConnected ?? 0} icon={XCircle} color="#F43F5E" bgColor="#FFF1F2" />
+                        <StatCard label="Total Duration" value={summary.totalDuration || '0s'} icon={Clock} color="#8B5CF6" bgColor="#F5F3FF" />
                     </div>
 
-                    {/* Connection Rate + Avg Duration */}
                     <div className="grid lg:grid-cols-3 gap-4">
                         <Card>
                             <div className="flex items-center gap-2 mb-4">
@@ -937,25 +678,8 @@ function SalespersonReport({ user }) {
                                 </div>
                                 <p className="font-bold text-slate-800">Connection Rate</p>
                             </div>
-                            <div className="flex items-center justify-center mb-4">
-                                <div className="relative w-28 h-28">
-                                    <svg viewBox="0 0 36 36" className="w-28 h-28 -rotate-90">
-                                        <circle cx="18" cy="18" r="15.9" fill="none" stroke="#F1F5F9" strokeWidth="4" />
-                                        <circle
-                                            cx="18" cy="18" r="15.9" fill="none"
-                                            stroke={summary.connectRate >= 50 ? '#10B981' : '#F43F5E'}
-                                            strokeWidth="4"
-                                            strokeDasharray={`${summary.connectRate ?? 0} ${100 - (summary.connectRate ?? 0)}`}
-                                            strokeLinecap="round"
-                                        />
-                                    </svg>
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                        <p className="text-2xl font-bold text-slate-900">{summary.connectRate ?? 0}%</p>
-                                        <p className="text-[10px] text-slate-400">Rate</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="space-y-1.5 text-sm">
+                            <DonutChart connected={summary.connected ?? 0} total={summary.total ?? 0} />
+                            <div className="space-y-1.5 text-sm mt-4">
                                 <div className="flex justify-between"><span className="text-slate-500">Connected</span><span className="font-semibold text-emerald-600">{summary.connected ?? 0}</span></div>
                                 <div className="flex justify-between"><span className="text-slate-500">Missed</span><span className="font-semibold text-rose-600">{summary.missed ?? 0}</span></div>
                                 <div className="flex justify-between"><span className="text-slate-500">Rejected</span><span className="font-semibold text-amber-600">{summary.rejected ?? 0}</span></div>
@@ -975,77 +699,38 @@ function SalespersonReport({ user }) {
                                 </div>
                             </div>
                             <div className="mt-4 pt-4 border-t border-slate-100 text-sm text-slate-500 space-y-1">
-                                <div className="flex justify-between">
-                                    <span>Date range</span>
-                                    <span className="font-medium text-slate-700">{fromDate} → {toDate}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span>Salesperson</span>
-                                    <span className="font-medium text-slate-700">{user?.name}</span>
-                                </div>
+                                <div className="flex justify-between"><span>Date range</span><span className="font-medium text-slate-700">{fromDate} → {toDate}</span></div>
+                                <div className="flex justify-between"><span>Salesperson</span><span className="font-medium text-slate-700">{user?.name}</span></div>
                             </div>
                         </Card>
                     </div>
 
-                    {/* Call List Table */}
                     {calls.length === 0 ? (
-                        <Card>
-                            <div className="text-center py-12">
-                                <div className="text-5xl mb-4">📊</div>
-                                <p className="text-lg font-bold text-slate-800">No Calls Found</p>
-                                <p className="text-sm text-slate-400 mt-1">No call logs for the selected date range.</p>
-                            </div>
-                        </Card>
+                        <Card><div className="text-center py-12"><div className="text-5xl mb-4">📊</div><p className="text-lg font-bold text-slate-800">No Calls Found</p><p className="text-sm text-slate-400 mt-1">No call logs for the selected date range.</p></div></Card>
                     ) : (
                         <Card padding={false}>
                             <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <FileText size={16} className="text-blue-500" />
-                                    <p className="font-bold text-slate-800 text-sm">Call List ({calls.length})</p>
-                                </div>
-                                <Button
-                                    variant="outline" size="sm" icon={Download}
-                                    onClick={() => downloadCSV(calls, user?.name || 'My')}
-                                >
-                                    Export CSV
-                                </Button>
+                                <div className="flex items-center gap-2"><FileText size={16} className="text-blue-500" /><p className="font-bold text-slate-800 text-sm">Call List ({calls.length})</p></div>
+                                <Button variant="outline" size="sm" icon={Download} onClick={() => downloadCSV(calls, user?.name || 'My')}>Export CSV</Button>
                             </div>
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
                                     <thead>
                                         <tr className="border-b border-slate-100 bg-slate-50/60">
-                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Date & Time</th>
-                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Customer</th>
-                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Type</th>
-                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
-                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Duration</th>
-                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide hidden md:table-cell">Disposition</th>
+                                            {['Date & Time', 'Customer', 'Type', 'Status', 'Duration', 'Disposition'].map(h => (
+                                                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</th>
+                                            ))}
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-50">
                                         {calls.map((call, i) => (
                                             <tr key={call._id || i} className="hover:bg-slate-50/50 transition-colors">
-                                                <td className="px-4 py-3 text-slate-600 whitespace-nowrap text-xs">
-                                                    {fmtDateTime(call.calledAt)}
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <p className="font-semibold text-slate-800 text-sm">{call.customerName || 'Unknown'}</p>
-                                                    <p className="text-xs text-slate-400">{call.customerNumber}</p>
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <span className={`text-xs font-semibold ${call.callType === 'Outgoing' ? 'text-blue-600' : 'text-violet-600'}`}>
-                                                        {call.callType === 'Outgoing' ? '↑ Outgoing' : '↓ Incoming'}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <StatusBadge status={call.callStatus} />
-                                                </td>
-                                                <td className="px-4 py-3 text-slate-600 font-medium text-sm">
-                                                    {fmtDuration(call.durationSeconds)}
-                                                </td>
-                                                <td className="px-4 py-3 hidden md:table-cell text-slate-500 text-xs">
-                                                    {call.disposition || '—'}
-                                                </td>
+                                                <td className="px-4 py-3 text-slate-600 whitespace-nowrap text-xs">{fmtDateTime(call.calledAt)}</td>
+                                                <td className="px-4 py-3"><p className="font-semibold text-slate-800 text-sm">{call.customerName || 'Unknown'}</p><p className="text-xs text-slate-400">{call.customerNumber}</p></td>
+                                                <td className="px-4 py-3"><span className={`text-xs font-semibold ${call.callType === 'Outgoing' ? 'text-blue-600' : 'text-violet-600'}`}>{call.callType === 'Outgoing' ? '↑ Outgoing' : '↓ Incoming'}</span></td>
+                                                <td className="px-4 py-3"><StatusBadge status={call.callStatus} /></td>
+                                                <td className="px-4 py-3 text-slate-600 font-medium text-sm">{fmtDuration(call.durationSeconds)}</td>
+                                                <td className="px-4 py-3 text-slate-500 text-xs">{call.disposition || '—'}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -1060,84 +745,386 @@ function SalespersonReport({ user }) {
 }
 
 // ══════════════════════════════════════════════════════════
-//  SUPER ADMIN / GENERIC REPORT (existing view, kept intact)
+//  ADMIN / BUSINESS USER — PROFESSIONAL REPORT
+//
+//  OLD CODE (GenericReport) jo replace ho raha hai:
+//  ─────────────────────────────────────────────
+//  function GenericReport() {
+//      const [period, setPeriod] = useState('today');
+//      const [loading, setLoading] = useState(true);
+//      const [stats, setStats] = useState(null);
+//      ...
+//      const fetchReports = useCallback(async () => {
+//          setLoading(true);
+//          try {
+//              const res = await api.getReports(period);  // ← sirf /api/reports/summary
+//              setStats(res);
+//          } catch { /* silent */ }
+//          setLoading(false);
+//      }, [period]);
+//      ...
+//      // SIRF 4 StatCards dikhata tha — koi chart nahi, koi agents nahi
+//      return (
+//          <div className="space-y-5">
+//              ...4 cards...
+//          </div>
+//      );
+//  }
+//
+//  NEW CODE (AdminReport):
+//  ─────────────────────────────────────────────
+//  - /api/reports?range=week call karta hai (full data)
+//  - summary.cards → KPI cards with change%
+//  - weeklyTrend   → Bar chart (7 days)
+//  - monthlySummary→ Line chart (6 months)
+//  - callDistribution → Incoming/Outgoing/Missed breakdown
+//  - agentPerformance → Agent table with connect-rate bar
 // ══════════════════════════════════════════════════════════
-function GenericReport() {
-    const [period, setPeriod] = useState('today');
-    const [loading, setLoading] = useState(true);
-    const [stats, setStats] = useState(null);
-
-    const PERIOD_OPTIONS = [
-        { value: 'today', label: 'Today' },
-        { value: 'week',  label: 'This Week' },
-        { value: 'month', label: 'This Month' },
+function AdminReport({ user }) {
+    const RANGE_OPTIONS = [
+        { value: 'today',   label: 'Today' },
+        { value: 'week',    label: 'This Week' },
+        { value: 'month',   label: 'This Month' },
+        { value: 'quarter', label: 'Last 3 Months' },
     ];
 
+    const [range, setRange]               = useState('week');
+    const [loading, setLoading]           = useState(true);
+    const [summary, setSummary]           = useState([]);
+    const [weeklyTrend, setWeeklyTrend]   = useState([]);
+    const [monthly, setMonthly]           = useState([]);
+    const [distribution, setDistribution] = useState([]);
+    const [agents, setAgents]             = useState([]);
+    const [error, setError]               = useState('');
+    const [exportLoading, setExportLoading] = useState(false);
+
+    // For CSV: also fetch call logs
+    const [callLogs, setCallLogs] = useState([]);
+
+    const isAdmin    = user?.role === 'super_admin';
+    const isBusiness = user?.role === 'business_user';
+
+    // ── Fetch all report data ──────────────────────────────
     const fetchReports = useCallback(async () => {
-        setLoading(true);
+        setLoading(true); setError('');
         try {
-            const res = await api.getReports(period);
-            setStats(res);
-        } catch { /* silent */ }
+            // ✅ CORRECT: api.js ka method use karo — sahi URL + auth headers automatic
+            const res = await api.getFullReport(range);
+
+            if (res?.summary)          setSummary(res.summary || []);
+            if (res?.weeklyTrend)      setWeeklyTrend(res.weeklyTrend || []);
+            if (res?.monthlySummary)   setMonthly(res.monthlySummary || []);
+            if (res?.callDistribution) setDistribution(res.callDistribution || []);
+            if (res?.agentPerformance) setAgents(res.agentPerformance || []);
+
+            // CSV ke liye call logs bhi fetch karo
+            try {
+                const logsRes = await api.getCallLogs({ limit: 500, sortField: 'calledAt', sortDir: 'desc' });
+                setCallLogs(logsRes?.logs || []);
+            } catch { /* non-critical */ }
+
+        } catch (e) {
+            console.error(e);
+            setError('Failed to load report data. Please check your connection.');
+        }
         setLoading(false);
-    }, [period]);
+    }, [range]);
 
     useEffect(() => { fetchReports(); }, [fetchReports]);
 
-    const totalCalls = stats?.total ?? 0;
-    const connected  = stats?.connected ?? 0;
-    const missed     = stats?.missed    ?? 0;
+    // ── Derived KPI values from summary cards ─────────────
+    // Backend summary is an array of card objects:
+    // [{ title: "Total Calls", value: "21", change: "+5%", up: true }, ...]
+    const kpiMap = {};
+    (Array.isArray(summary) ? summary : []).forEach(s => {
+        kpiMap[s.title] = s;
+    });
+
+    const totalCallsCard  = kpiMap['Total Calls']    || {};
+    const connectedCard   = kpiMap['Connected Calls']  || {};
+    const missedCard      = kpiMap['Missed Calls']      || {};
+    // const connectRateCard = kpiMap['Connect Rate']   || {};
+
+    // Total/connected numbers for donut chart
+    const totalNum    = parseInt(totalCallsCard.value)  || 0;
+    const connectedNum = parseInt(connectedCard.value)  || 0;
+
+    const connectRateVal  = totalNum > 0
+        ? Math.round((connectedNum / totalNum) * 100) : 0;
+    const connectRateCard = { value: `${connectRateVal}%`, change: null, up: connectRateVal >= 50 };
+
+    
 
     return (
-        <div className="space-y-5">
-            <div>
-                <h2 className="text-xl font-bold text-slate-900">Reports & Analytics</h2>
-                <p className="text-sm text-slate-400 mt-0.5">System-wide performance insights</p>
+        <div className="space-y-6">
+            {/* ── Header ─────────────────────────────────── */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                    <h2 className="text-xl font-bold text-slate-900">Reports & Analytics</h2>
+                    <p className="text-sm text-slate-400 mt-0.5">
+                        {isAdmin ? 'Platform-wide performance insights' : 'Your team performance insights'}
+                    </p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="secondary" size="sm" icon={Download}
+                        onClick={() => downloadCSV(callLogs, isAdmin ? 'Platform' : 'Team')}
+                        disabled={!callLogs.length}
+                    >
+                        Export CSV
+                    </Button>
+                    <Button variant="secondary" size="sm" icon={RefreshCcw} onClick={fetchReports}>
+                        Refresh
+                    </Button>
+                </div>
             </div>
+
+            {/* ── Range Selector ─────────────────────────── */}
             <Card>
+                <div className="flex items-center gap-2 mb-3">
+                    <Filter size={15} className="text-slate-400" />
+                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Date Range</span>
+                </div>
                 <div className="flex flex-wrap gap-2">
-                    {PERIOD_OPTIONS.map(opt => (
+                    {RANGE_OPTIONS.map(opt => (
                         <button
                             key={opt.value}
-                            onClick={() => setPeriod(opt.value)}
-                            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${period === opt.value ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                            onClick={() => setRange(opt.value)}
+                            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                                range === opt.value
+                                    ? 'bg-blue-600 text-white shadow-sm'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
                         >
                             {opt.label}
                         </button>
                     ))}
                 </div>
             </Card>
-            {loading ? (
-                <LoadingPage />
-            ) : (
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    <StatCard label="Total Calls" value={totalCalls} icon={Phone} color="#3B82F6" bgColor="#EFF6FF" />
-                    <StatCard label="Connected"   value={connected}  icon={CheckCircle} color="#10B981" bgColor="#ECFDF5" />
-                    <StatCard label="Missed"      value={missed}     icon={XCircle}    color="#F43F5E" bgColor="#FFF1F2" />
-                    <StatCard label="Connect Rate" value={`${stats?.connectRate ?? 0}%`} icon={TrendingUp} color="#8B5CF6" bgColor="#F5F3FF" />
+
+            {/* ── Error ──────────────────────────────────── */}
+            {error && (
+                <div className="bg-rose-50 border border-rose-200 rounded-2xl px-5 py-4 flex items-center justify-between">
+                    <p className="text-rose-700 text-sm font-medium">⚠️ {error}</p>
+                    <button onClick={fetchReports} className="text-rose-600 font-semibold text-sm ml-4 hover:underline">Retry →</button>
                 </div>
+            )}
+
+            {loading ? <LoadingPage /> : (
+                <>
+                    {/* ── KPI Cards ──────────────────────────── */}
+                    {/*
+                      OLD: Sirf 4 plain StatCards the, koi change% nahi tha
+                      NEW: Backend se summary.cards aata hai jisme change% bhi hai
+                    */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        {[
+                            { card: totalCallsCard,  label: 'Total Calls',    icon: Phone,        color: '#3B82F6', bg: '#EFF6FF' },
+                            { card: connectedCard,   label: 'Connected',      icon: CheckCircle,  color: '#10B981', bg: '#ECFDF5' },
+                            { card: missedCard,      label: 'Missed',         icon: XCircle,      color: '#F43F5E', bg: '#FFF1F2' },
+                            { card: connectRateCard, label: 'Connect Rate',   icon: TrendingUp,   color: '#8B5CF6', bg: '#F5F3FF' },
+                        ].map(({ card, label, icon, color, bg }) => (
+                            <div key={label} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: bg }}>
+                                        {React.createElement(icon, { size: 20, style: { color } })}
+                                    </div>
+                                    {card.change && (
+                                        <span className={`text-xs font-bold flex items-center gap-0.5 ${card.up ? 'text-emerald-600' : 'text-rose-500'}`}>
+                                            {card.up ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                                            {card.change}
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="text-2xl font-bold text-slate-900">{card.value ?? '—'}</p>
+                                <p className="text-xs text-slate-400 mt-1">{label}</p>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* ── Charts Row ─────────────────────────── */}
+                    {/*
+                      OLD: Koi chart nahi tha
+                      NEW: Weekly bar chart + Connection rate donut
+                    */}
+                    <div className="grid lg:grid-cols-3 gap-5">
+                        {/* Weekly Trend Bar */}
+                        <Card className="lg:col-span-2" padding={false}>
+                            <div className="p-5 border-b border-slate-50">
+                                <div className="flex items-center gap-2">
+                                    <BarChart2 size={16} className="text-blue-500" />
+                                    <p className="font-bold text-slate-800 text-sm">7-Day Call Volume</p>
+                                </div>
+                            </div>
+                            <div className="p-5">
+                                <WeeklyBarChart data={weeklyTrend} />
+                            </div>
+                        </Card>
+
+                        {/* Donut + Distribution */}
+                        <Card>
+                            <div className="flex items-center gap-2 mb-4">
+                                <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center">
+                                    <TrendingUp size={18} className="text-emerald-600" />
+                                </div>
+                                <p className="font-bold text-slate-800">Connection Rate</p>
+                            </div>
+                            <DonutChart connected={connectedNum} total={totalNum} />
+                            <div className="space-y-2 mt-4">
+                                {distribution.map((d, i) => (
+                                    <div key={i} className="flex items-center justify-between text-sm">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.color }} />
+                                            <span className="text-slate-600">{d.name}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-semibold text-slate-700">{d.value}</span>
+                                            <span className="text-xs text-slate-400">({d.percent}%)</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </Card>
+                    </div>
+
+                    {/* ── Monthly Trend Line ─────────────────── */}
+                    {/*
+                      OLD: Koi monthly chart nahi tha
+                      NEW: 6-month SVG line chart
+                    */}
+                    {monthly.length > 0 && (
+                        <Card padding={false}>
+                            <div className="p-5 border-b border-slate-50">
+                                <div className="flex items-center gap-2">
+                                    <TrendingUp size={16} className="text-blue-500" />
+                                    <p className="font-bold text-slate-800 text-sm">6-Month Trend</p>
+                                </div>
+                            </div>
+                            <div className="p-5">
+                                <MonthlyLineChart data={monthly} />
+                                <div className="flex items-center justify-center gap-6 mt-3 pt-3 border-t border-slate-100">
+                                    <div className="flex items-center gap-1.5 text-xs text-slate-500"><div className="w-3 h-3 rounded-sm bg-blue-500" /> Total Calls</div>
+                                </div>
+                            </div>
+                        </Card>
+                    )}
+
+                    {/* ── Agent / Salesperson Performance Table ─ */}
+                    {/*
+                      OLD: Koi agent table nahi tha
+                      NEW: Full table with connect-rate progress bar
+                           Backend agentPerformance se data aata hai:
+                           { _id, name, email, calls, connected, missed, rate, avgDuration }
+                    */}
+                    {agents.length > 0 && (
+                        <Card padding={false}>
+                            <div className="p-5 border-b border-slate-100">
+                                <div className="flex items-center gap-2">
+                                    <Users size={16} className="text-violet-500" />
+                                    <p className="font-bold text-slate-800 text-sm">
+                                        {isAdmin ? 'All Salesperson Performance' : 'My Team Performance'}
+                                    </p>
+                                    <span className="ml-auto text-xs text-slate-400">{agents.length} agents</span>
+                                </div>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b border-slate-100 bg-slate-50/60">
+                                            <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Agent</th>
+                                            <th className="px-5 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">Total</th>
+                                            <th className="px-5 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">Connected</th>
+                                            <th className="px-5 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">Missed</th>
+                                            <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide hidden sm:table-cell" style={{ minWidth: 140 }}>Connect Rate</th>
+                                            <th className="px-5 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide hidden md:table-cell">Avg Duration</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50">
+                                        {agents.map((ag, i) => (
+                                            <tr key={ag._id || i} className="hover:bg-slate-50/50 transition-colors">
+                                                <td className="px-5 py-3.5">
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-xs text-slate-300 font-bold w-5 shrink-0">#{i+1}</span>
+                                                        <div
+                                                            className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                                                            style={{ backgroundColor: ['#3B82F6','#8B5CF6','#10B981','#F43F5E','#F59E0B','#06B6D4'][i % 6] }}
+                                                        >
+                                                            {(ag.name || ag.avatar || 'A').charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-semibold text-slate-800">{ag.name}</p>
+                                                            <p className="text-xs text-slate-400">{ag.email}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-5 py-3.5 text-center">
+                                                    <span className="text-sm font-bold text-blue-600">{ag.calls ?? 0}</span>
+                                                </td>
+                                                <td className="px-5 py-3.5 text-center">
+                                                    <span className="text-sm font-bold text-emerald-600">{ag.connected ?? 0}</span>
+                                                </td>
+                                                <td className="px-5 py-3.5 text-center">
+                                                    <span className="text-sm font-bold text-rose-500">{ag.missed ?? 0}</span>
+                                                </td>
+                                                <td className="px-5 py-3.5 hidden sm:table-cell">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                                            <div
+                                                                className="h-full rounded-full transition-all"
+                                                                style={{
+                                                                    width: `${ag.rate ?? 0}%`,
+                                                                    backgroundColor: (ag.rate ?? 0) >= 60 ? '#10B981' : (ag.rate ?? 0) >= 40 ? '#F59E0B' : '#F43F5E',
+                                                                }}
+                                                            />
+                                                        </div>
+                                                        <span className="text-xs font-semibold text-slate-500 w-9 shrink-0">
+                                                            {ag.rate ?? 0}%
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-5 py-3.5 text-center text-sm text-slate-500 hidden md:table-cell">
+                                                    {ag.avgDuration || '0s'}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </Card>
+                    )}
+
+                    {/* Empty state */}
+                    {agents.length === 0 && totalNum === 0 && (
+                        <Card>
+                            <div className="text-center py-16">
+                                <div className="text-5xl mb-4">📊</div>
+                                <p className="text-lg font-bold text-slate-800">No Data Available</p>
+                                <p className="text-sm text-slate-400 mt-1">No call records found for the selected period.</p>
+                            </div>
+                        </Card>
+                    )}
+                </>
             )}
         </div>
     );
 }
 
 // ══════════════════════════════════════════════════════════
-//  ROOT EXPORT — Role Router
+//  ROOT EXPORT — Role Router (unchanged logic)
 // ══════════════════════════════════════════════════════════
 export default function Reports() {
     const { user } = useContext(AuthContext);
     const navigate = useNavigate();
 
-    // Business user should use the dedicated Salesperson Reports page
     useEffect(() => {
         if (user?.role === 'business_user') {
             navigate('/business/salesperson-reports', { replace: true });
         }
     }, [user, navigate]);
 
-    if (user?.role === 'salesperson')  return <SalespersonReport user={user} />;
-    if (user?.role === 'super_admin')  return <GenericReport />;
+    if (user?.role === 'salesperson') return <SalespersonReport user={user} />;
+    if (user?.role === 'super_admin')  return <AdminReport user={user} />;
+    if (user?.role === 'business_user') return <AdminReport user={user} />;
 
-    // business_user — redirecting (spinner while redirecting)
     return <LoadingPage />;
 }

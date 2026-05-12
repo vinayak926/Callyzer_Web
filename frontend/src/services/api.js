@@ -211,8 +211,19 @@ export const api = {
     // },
 
     // ── REPORTS ───────────────────────────────────────────
+    // getReports: async (period = 'month') => {
+    //     const res = await fetch(`${API_BASE_URL}/reports/summary?period=${period}`, { headers: authHeaders() });
+    //     return res.json();
+    // },
+
     getReports: async (period = 'month') => {
         const res = await fetch(`${API_BASE_URL}/reports/summary?period=${period}`, { headers: authHeaders() });
+        return res.json();
+    },
+
+    // Full rich report — Admin/Business User Reports page ke liye
+    getFullReport: async (range = 'week') => {
+        const res = await fetch(`${API_BASE_URL}/reports?range=${range}`, { headers: authHeaders() });
         return res.json();
     },
 

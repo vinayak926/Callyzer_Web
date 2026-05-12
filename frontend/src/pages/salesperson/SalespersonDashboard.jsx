@@ -278,9 +278,9 @@ export default function SalespersonDashboard() {
 
     if (loading) return <LoadingPage />;
 
-    const totalCalls = stats?.totalCalls ?? 0;
-    const connected = stats?.connected ?? 0;
-    const missed = stats?.missed ?? 0;
+    const totalCalls = stats?.total ?? stats?.totalCalls ?? 0;
+    const connected  = stats?.connected ?? 0;
+    const missed     = stats?.missed ?? 0;
     const avgDuration = stats?.avgDuration ?? 0;
     const connectRate = totalCalls > 0 ? Math.round((connected / totalCalls) * 100) : 0;
 
